@@ -1,0 +1,216 @@
+{
+  "customAttributes": [
+    {
+      "id": "attr-1",
+      "name": "Salary",
+      "dataType": "currency",
+      "required": false
+    },
+    {
+      "id": "attr-2",
+      "name": "Remote",
+      "dataType": "boolean",
+      "required": false
+    },
+    {
+      "id": "attr-3",
+      "name": "Emergency Contact",
+      "dataType": "string",
+      "required": false
+    }
+  ],
+  "employees": [
+    {
+      "id": "emp-1",
+      "type": "employee",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@example.com",
+      "department": "Engineering",
+      "title": "Senior Software Engineer",
+      "manager": "Jane Smith",
+      "status": "active",
+      "startDate": "2023-01-15",
+      "customAttributes": {
+        "Salary": "120000",
+        "Remote": true,
+        "Emergency Contact": "555-0101"
+      },
+      "createdAt": "2023-01-15T08:00:00.000Z",
+      "updatedAt": "2023-01-15T08:00:00.000Z"
+    },
+    {
+      "id": "emp-2",
+      "type": "employee",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith@example.com",
+      "department": "Engineering",
+      "title": "Engineering Manager",
+      "manager": "Bob Johnson",
+      "status": "active",
+      "startDate": "2022-03-01",
+      "customAttributes": {
+        "Salary": "150000",
+        "Remote": false,
+        "Emergency Contact": "555-0102"
+      },
+      "createdAt": "2022-03-01T08:00:00.000Z",
+      "updatedAt": "2022-03-01T08:00:00.000Z"
+    },
+    {
+      "id": "emp-3",
+      "type": "contractor",
+      "firstName": "Alice",
+      "lastName": "Johnson",
+      "email": "alice.johnson@example.com",
+      "department": "Design",
+      "title": "UI/UX Designer",
+      "manager": "Sarah Williams",
+      "status": "active",
+      "startDate": "2024-01-01",
+      "endDate": "2024-12-31",
+      "customAttributes": {
+        "Salary": "95000",
+        "Remote": true,
+        "Emergency Contact": "555-0103"
+      },
+      "createdAt": "2024-01-01T08:00:00.000Z",
+      "updatedAt": "2024-01-01T08:00:00.000Z"
+    },
+    {
+      "id": "emp-4",
+      "type": "employee",
+      "firstName": "Bob",
+      "lastName": "Johnson",
+      "email": "bob.johnson@example.com",
+      "department": "Engineering",
+      "title": "VP of Engineering",
+      "manager": "CEO",
+      "status": "active",
+      "startDate": "2021-06-15",
+      "customAttributes": {
+        "Salary": "180000",
+        "Remote": false,
+        "Emergency Contact": "555-0104"
+      },
+      "createdAt": "2021-06-15T08:00:00.000Z",
+      "updatedAt": "2021-06-15T08:00:00.000Z"
+    },
+    {
+      "id": "emp-5",
+      "type": "employee",
+      "firstName": "Sarah",
+      "lastName": "Williams",
+      "email": "sarah.williams@example.com",
+      "department": "Design",
+      "title": "Design Lead",
+      "manager": "Bob Johnson",
+      "status": "active",
+      "startDate": "2022-09-01",
+      "customAttributes": {
+        "Salary": "130000",
+        "Remote": true,
+        "Emergency Contact": "555-0105"
+      },
+      "createdAt": "2022-09-01T08:00:00.000Z",
+      "updatedAt": "2022-09-01T08:00:00.000Z"
+    },
+    {
+      "id": "emp-6",
+      "type": "employee",
+      "firstName": "Michael",
+      "lastName": "Brown",
+      "email": "michael.brown@example.com",
+      "department": "Sales",
+      "title": "Sales Representative",
+      "manager": "Lisa Davis",
+      "status": "inactive",
+      "startDate": "2023-05-01",
+      "customAttributes": {
+        "Salary": "75000",
+        "Remote": false,
+        "Emergency Contact": "555-0106"
+      },
+      "createdAt": "2023-05-01T08:00:00.000Z",
+      "updatedAt": "2024-02-15T08:00:00.000Z"
+    },
+    {
+      "id": "emp-7",
+      "type": "employee",
+      "firstName": "Lisa",
+      "lastName": "Davis",
+      "email": "lisa.davis@example.com",
+      "department": "Sales",
+      "title": "Sales Manager",
+      "manager": "CEO",
+      "status": "active",
+      "startDate": "2020-11-01",
+      "customAttributes": {
+        "Salary": "140000",
+        "Remote": false,
+        "Emergency Contact": "555-0107"
+      },
+      "createdAt": "2020-11-01T08:00:00.000Z",
+      "updatedAt": "2020-11-01T08:00:00.000Z"
+    },
+    {
+      "id": "emp-8",
+      "type": "contractor",
+      "firstName": "David",
+      "lastName": "Wilson",
+      "email": "david.wilson@example.com",
+      "department": "Marketing",
+      "title": "Content Writer",
+      "manager": "Emily Chen",
+      "status": "active",
+      "startDate": "2024-02-01",
+      "endDate": "2024-08-31",
+      "customAttributes": {
+        "Salary": "65000",
+        "Remote": true,
+        "Emergency Contact": "555-0108"
+      },
+      "createdAt": "2024-02-01T08:00:00.000Z",
+      "updatedAt": "2024-02-01T08:00:00.000Z"
+    },
+    {
+      "id": "emp-9",
+      "type": "employee",
+      "firstName": "Emily",
+      "lastName": "Chen",
+      "email": "emily.chen@example.com",
+      "department": "Marketing",
+      "title": "Marketing Director",
+      "manager": "CEO",
+      "status": "active",
+      "startDate": "2021-04-01",
+      "customAttributes": {
+        "Salary": "135000",
+        "Remote": false,
+        "Emergency Contact": "555-0109"
+      },
+      "createdAt": "2021-04-01T08:00:00.000Z",
+      "updatedAt": "2021-04-01T08:00:00.000Z"
+    },
+    {
+      "id": "emp-10",
+      "type": "employee",
+      "firstName": "James",
+      "lastName": "Martinez",
+      "email": "james.martinez@example.com",
+      "department": "HR",
+      "title": "HR Manager",
+      "manager": "CEO",
+      "status": "terminated",
+      "startDate": "2019-01-15",
+      "customAttributes": {
+        "Salary": "110000",
+        "Remote": false,
+        "Emergency Contact": "555-0110"
+      },
+      "createdAt": "2019-01-15T08:00:00.000Z",
+      "updatedAt": "2023-12-31T08:00:00.000Z"
+    }
+  ]
+}

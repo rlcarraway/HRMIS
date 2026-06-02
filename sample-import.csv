@@ -1,0 +1,6 @@
+Type,First Name,Last Name,Email,Department,Title,Manager,Status,Start Date,End Date,Clearance Level,Years Experience
+employee,Jane,Smith,jane.smith@example.com,Engineering,Senior Software Engineer,John Doe,active,2023-01-15,,Top Secret,8
+contractor,Bob,Johnson,bob.j@contractor.com,Marketing,Marketing Consultant,Alice Williams,active,2024-03-01,2024-12-31,Public,3
+employee,Carol,Davis,carol.d@example.com,HR,HR Manager,Jane Smith,active,2022-06-01,,Secret,12
+employee,David,Martinez,david.m@example.com,Engineering,DevOps Engineer,Jane Smith,active,2023-09-20,,Confidential,5
+contractor,Emma,Wilson,emma.w@contractor.com,Sales,Sales Representative,Michael Brown,active,2024-01-10,2024-06-30,Public,2
