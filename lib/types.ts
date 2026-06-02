@@ -58,6 +58,14 @@ export interface EmployeeStats {
   byDepartment: Record<string, number>;
 }
 
+// OAuth configuration for webhook authentication
+export interface OAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  tokenUrl: string; // OAuth token endpoint
+  scope?: string; // Optional OAuth scope
+}
+
 // Export schedule definition
 export interface ExportSchedule {
   id: string;
@@ -73,6 +81,7 @@ export interface ExportSchedule {
   enabled: boolean;
   exportType: 'full' | 'delta'; // Full export or delta (changes since last export)
   webhookUrl?: string; // Optional webhook to call when export completes
+  webhookOAuth?: OAuthConfig; // Optional OAuth configuration for webhook
   lastExecuted?: string; // ISO timestamp
   lastExportedRecordIds?: string[]; // IDs of records in last export (for delta tracking)
   nextScheduled: string; // ISO timestamp (calculated)

@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
       enabled: body.enabled,
       exportType: body.exportType || 'full',
       webhookUrl: body.webhookUrl || undefined,
+      webhookOAuth: body.webhookOAuth || undefined,
       nextScheduled: '', // Will be calculated
       createdAt: now,
       updatedAt: now,

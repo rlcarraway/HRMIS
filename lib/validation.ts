@@ -48,6 +48,14 @@ export const customAttributeSchema = z.object({
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
 export type CustomAttributeFormData = z.infer<typeof customAttributeSchema>;
 
+// OAuth configuration validation schema
+export const oauthConfigSchema = z.object({
+  clientId: z.string().min(1, 'Client ID is required'),
+  clientSecret: z.string().min(1, 'Client Secret is required'),
+  tokenUrl: z.string().url('Invalid token URL'),
+  scope: z.string().optional(),
+});
+
 // Export schedule validation schema
 export const exportScheduleSchema = z.object({
   name: z.string().min(1, 'Schedule name is required').max(100),
@@ -69,6 +77,7 @@ export const exportScheduleSchema = z.object({
   enabled: z.boolean(),
   exportType: z.enum(['full', 'delta']),
   webhookUrl: z.string().url('Invalid webhook URL').optional().or(z.literal('')),
+  webhookOAuth: oauthConfigSchema.optional(),
 }).refine(
   (data) => {
     if (data.frequency === 'once') return !!data.scheduledDate;

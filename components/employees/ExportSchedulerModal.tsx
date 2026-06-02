@@ -45,6 +45,11 @@ export function ExportSchedulerModal({
   const [enabled, setEnabled] = useState(true);
   const [exportType, setExportType] = useState<'full' | 'delta'>('full');
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [showOAuth, setShowOAuth] = useState(false);
+  const [oauthClientId, setOauthClientId] = useState('');
+  const [oauthClientSecret, setOauthClientSecret] = useState('');
+  const [oauthTokenUrl, setOauthTokenUrl] = useState('');
+  const [oauthScope, setOauthScope] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<EmployeeFilters>(currentFilters);
   const [error, setError] = useState('');
@@ -67,6 +72,15 @@ export function ExportSchedulerModal({
       setExportType(initialSchedule.exportType);
       setWebhookUrl(initialSchedule.webhookUrl || '');
       setFilters(initialSchedule.filters);
+
+      // Load OAuth config if present
+      if (initialSchedule.webhookOAuth) {
+        setShowOAuth(true);
+        setOauthClientId(initialSchedule.webhookOAuth.clientId);
+        setOauthClientSecret(initialSchedule.webhookOAuth.clientSecret);
+        setOauthTokenUrl(initialSchedule.webhookOAuth.tokenUrl);
+        setOauthScope(initialSchedule.webhookOAuth.scope || '');
+      }
     }
   }, [initialSchedule]);
 
@@ -116,6 +130,28 @@ export function ExportSchedulerModal({
       }
     }
 
+    // Validate OAuth config if provided
+    if (showOAuth && webhookUrl && webhookUrl.trim()) {
+      if (!oauthClientId.trim()) {
+        setError('OAuth Client ID is required');
+        return;
+      }
+      if (!oauthClientSecret.trim()) {
+        setError('OAuth Client Secret is required');
+        return;
+      }
+      if (!oauthTokenUrl.trim()) {
+        setError('OAuth Token URL is required');
+        return;
+      }
+      try {
+        new URL(oauthTokenUrl);
+      } catch {
+        setError('Invalid OAuth Token URL');
+        return;
+      }
+    }
+
     const scheduleData: Omit<ExportSchedule, 'id' | 'createdAt' | 'updatedAt' | 'nextScheduled' | 'lastExecuted' | 'lastExportedRecordIds'> = {
       name,
       frequency,
@@ -129,6 +165,12 @@ export function ExportSchedulerModal({
       enabled,
       exportType,
       webhookUrl: webhookUrl.trim() || undefined,
+      webhookOAuth: (showOAuth && webhookUrl.trim() && oauthClientId.trim() && oauthClientSecret.trim() && oauthTokenUrl.trim()) ? {
+        clientId: oauthClientId.trim(),
+        clientSecret: oauthClientSecret.trim(),
+        tokenUrl: oauthTokenUrl.trim(),
+        scope: oauthScope.trim() || undefined,
+      } : undefined,
     };
 
     try {
@@ -310,6 +352,54 @@ export function ExportSchedulerModal({
         {webhookUrl && (
           <div className="bg-amber-50 p-3 rounded-lg text-sm text-amber-700">
             The webhook will be called with a POST request containing export details when the export completes.
+          </div>
+        )}
+
+        {webhookUrl && webhookUrl.trim() && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowOAuth(!showOAuth)}
+              className="text-sm text-primary hover:text-primary-dark font-medium"
+            >
+              {showOAuth ? '- Hide OAuth Configuration' : '+ Add OAuth Authentication'}
+            </button>
+
+            {showOAuth && (
+              <div className="mt-3 p-4 border border-gray-200 rounded-lg space-y-3 bg-gray-50">
+                <div className="text-sm font-medium text-gray-700 mb-2">
+                  OAuth 2.0 Client Credentials
+                </div>
+                <Input
+                  label="Client ID"
+                  value={oauthClientId}
+                  onChange={(e) => setOauthClientId(e.target.value)}
+                  placeholder="your-client-id"
+                />
+                <Input
+                  label="Client Secret"
+                  type="password"
+                  value={oauthClientSecret}
+                  onChange={(e) => setOauthClientSecret(e.target.value)}
+                  placeholder="your-client-secret"
+                />
+                <Input
+                  label="Token URL"
+                  value={oauthTokenUrl}
+                  onChange={(e) => setOauthTokenUrl(e.target.value)}
+                  placeholder="https://auth.example.com/oauth/token"
+                />
+                <Input
+                  label="Scope (optional)"
+                  value={oauthScope}
+                  onChange={(e) => setOauthScope(e.target.value)}
+                  placeholder="read write"
+                />
+                <div className="bg-blue-50 p-2 rounded text-xs text-blue-700">
+                  The system will automatically obtain and cache access tokens using the Client Credentials flow.
+                </div>
+              </div>
+            )}
           </div>
         )}
 

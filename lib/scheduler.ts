@@ -1,12 +1,19 @@
 import cron, { ScheduledTask } from 'node-cron';
 import { storage } from './storage';
 import { exportToCSV } from './export';
-import { ExportSchedule, Employee } from './types';
+import { ExportSchedule, Employee, OAuthConfig } from './types';
 import { calculateNextScheduledTime, generateId } from './utils';
 import fs from 'fs';
 import path from 'path';
 
 const activeJobs = new Map<string, ScheduledTask>();
+
+// OAuth token cache to avoid requesting tokens too frequently
+interface TokenCacheEntry {
+  accessToken: string;
+  expiresAt: number; // Unix timestamp
+}
+const tokenCache = new Map<string, TokenCacheEntry>();
 
 export function registerSchedule(schedule: ExportSchedule) {
   // Remove existing job if any
@@ -140,16 +147,20 @@ export async function executeScheduledExport(scheduleId: string): Promise<{ succ
     // Call webhook if configured
     if (schedule.webhookUrl) {
       webhookCalled = true;
-      webhookSuccess = await callWebhook(schedule.webhookUrl, {
-        scheduleId: schedule.id,
-        scheduleName: schedule.name,
-        executedAt,
-        success: true,
-        employeeCount: employees.length,
-        filename,
-        exportType: schedule.exportType,
-        filepath: filepath,
-      });
+      webhookSuccess = await callWebhook(
+        schedule.webhookUrl,
+        {
+          scheduleId: schedule.id,
+          scheduleName: schedule.name,
+          executedAt,
+          success: true,
+          employeeCount: employees.length,
+          filename,
+          exportType: schedule.exportType,
+          filepath: filepath,
+        },
+        schedule.webhookOAuth
+      );
     }
 
     // Log execution
@@ -225,17 +236,87 @@ function filterDeltaRecords(employees: Employee[], schedule: ExportSchedule): Em
   });
 }
 
-// Call webhook with export details
-async function callWebhook(webhookUrl: string, payload: any): Promise<boolean> {
+// Get OAuth access token (with caching)
+async function getOAuthToken(oauthConfig: OAuthConfig): Promise<string | null> {
+  const cacheKey = `${oauthConfig.clientId}:${oauthConfig.tokenUrl}`;
+
+  // Check cache
+  const cached = tokenCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    console.log('Using cached OAuth token');
+    return cached.accessToken;
+  }
+
   try {
-    const response = await fetch(webhookUrl, {
+    console.log(`Requesting OAuth token from ${oauthConfig.tokenUrl}`);
+
+    // Request new token using client credentials flow
+    const tokenResponse = await fetch(oauthConfig.tokenUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'HRMIS-Export-Scheduler/1.0',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(`${oauthConfig.clientId}:${oauthConfig.clientSecret}`).toString('base64')}`,
       },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        ...(oauthConfig.scope && { scope: oauthConfig.scope }),
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('OAuth token request failed:', tokenResponse.status, errorText);
+      return null;
+    }
+
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+    const expiresIn = tokenData.expires_in || 3600; // Default 1 hour
+
+    // Cache token (with 5 minute buffer before expiry)
+    const expiresAt = Date.now() + (expiresIn - 300) * 1000;
+    tokenCache.set(cacheKey, { accessToken, expiresAt });
+
+    console.log('OAuth token acquired successfully');
+    return accessToken;
+  } catch (error) {
+    console.error('OAuth token acquisition failed:', error);
+    return null;
+  }
+}
+
+// Call webhook with export details
+async function callWebhook(
+  webhookUrl: string,
+  payload: any,
+  oauthConfig?: OAuthConfig
+): Promise<boolean> {
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'HRMIS-Export-Scheduler/1.0',
+    };
+
+    // Get OAuth token if configured
+    if (oauthConfig) {
+      const token = await getOAuthToken(oauthConfig);
+      if (!token) {
+        console.error('Failed to acquire OAuth token for webhook');
+        return false;
+      }
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers,
       body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Webhook call failed: ${response.status} ${errorText}`);
+    }
 
     return response.ok;
   } catch (error) {
