@@ -4,7 +4,7 @@ import { generateId, getObjectDiff } from '@/lib/utils';
 
 // GET /api/employees/[id] - Get single employee
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -100,7 +100,7 @@ export async function PUT(
 
 // DELETE /api/employees/[id] - Delete employee
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {

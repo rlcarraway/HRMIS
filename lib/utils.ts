@@ -1,4 +1,4 @@
-import { format, parseISO, add, set, nextDay, startOfMonth, addMonths } from 'date-fns';
+import { format, parseISO, add, set, startOfMonth, addMonths } from 'date-fns';
 import { Employee, EmployeeStats, ExportSchedule } from './types';
 
 // Format date for display

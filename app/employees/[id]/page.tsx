@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useEmployees } from '@/hooks/useEmployees';
 import { Employee } from '@/lib/types';
 import { EmployeeForm } from '@/components/employees/EmployeeForm';
@@ -10,7 +9,6 @@ import { ArrowLeft, History } from 'lucide-react';
 import Link from 'next/link';
 
 export default function EmployeeDetailPage({ params }: { params: { id: string } }) {
-  const router = useRouter();
   const { getEmployee, updateEmployee } = useEmployees();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [isEditing, setIsEditing] = useState(false);

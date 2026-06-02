@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storage } from '@/lib/storage';
-import { exportScheduleSchema } from '@/lib/validation';
 import { calculateNextScheduledTime } from '@/lib/utils';
 import { registerSchedule, unregisterSchedule } from '@/lib/scheduler';
 
 // GET /api/export-schedules/[id] - Get single schedule
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -99,7 +98,7 @@ export async function PUT(
 
 // DELETE /api/export-schedules/[id] - Delete schedule
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {

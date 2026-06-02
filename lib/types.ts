@@ -63,7 +63,7 @@ export interface ExportSchedule {
   id: string;
   name: string;
   frequency: 'once' | 'daily' | 'weekly' | 'monthly' | 'hourly' | 'minutes';
-  scheduledTime: string; // HH:mm format (e.g., "09:00") for once/daily/weekly/monthly
+  scheduledTime?: string; // HH:mm format (e.g., "09:00") for once/daily/weekly/monthly (not used for hourly/minutes)
   scheduledDate?: string; // ISO date for 'once' type only
   dayOfWeek?: number; // 0-6 for 'weekly' (Sunday=0, Monday=1, etc.)
   dayOfMonth?: number; // 1-31 for 'monthly'

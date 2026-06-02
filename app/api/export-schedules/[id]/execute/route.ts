@@ -3,7 +3,7 @@ import { executeScheduledExport } from '@/lib/scheduler';
 
 // POST /api/export-schedules/[id]/execute - Manually trigger schedule execution
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
