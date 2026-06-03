@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Table, Column } from '@/components/ui/Table';
-import { Plus, Edit, Trash2, Upload, X, Building2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Upload, X, Building2, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function SettingsPage() {
   const { attributes, createAttribute, updateAttribute, deleteAttribute } = useCustomAttributes();
@@ -146,6 +146,24 @@ export default function SettingsPage() {
     }));
   };
 
+  const handleMoveOptionUp = (index: number) => {
+    if (index === 0) return;
+    setFormData(prev => {
+      const newOptions = [...prev.options];
+      [newOptions[index - 1], newOptions[index]] = [newOptions[index], newOptions[index - 1]];
+      return { ...prev, options: newOptions };
+    });
+  };
+
+  const handleMoveOptionDown = (index: number) => {
+    if (index === formData.options.length - 1) return;
+    setFormData(prev => {
+      const newOptions = [...prev.options];
+      [newOptions[index], newOptions[index + 1]] = [newOptions[index + 1], newOptions[index]];
+      return { ...prev, options: newOptions };
+    });
+  };
+
   // Core attribute handlers
   const openCoreModal = (attribute: CoreAttributeConfig) => {
     setEditingCoreAttribute(attribute);
@@ -208,6 +226,24 @@ export default function SettingsPage() {
       ...prev,
       options: prev.options.filter((_, i) => i !== index),
     }));
+  };
+
+  const handleMoveCoreOptionUp = (index: number) => {
+    if (index === 0) return;
+    setCoreFormData(prev => {
+      const newOptions = [...prev.options];
+      [newOptions[index - 1], newOptions[index]] = [newOptions[index], newOptions[index - 1]];
+      return { ...prev, options: newOptions };
+    });
+  };
+
+  const handleMoveCoreOptionDown = (index: number) => {
+    if (index === coreFormData.options.length - 1) return;
+    setCoreFormData(prev => {
+      const newOptions = [...prev.options];
+      [newOptions[index], newOptions[index + 1]] = [newOptions[index + 1], newOptions[index]];
+      return { ...prev, options: newOptions };
+    });
   };
 
   const columns: Column<CustomAttribute>[] = [
@@ -536,14 +572,42 @@ export default function SettingsPage() {
                   {coreFormData.options.map((option, index) => (
                     <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
                       <span className="text-sm text-gray-700">{option}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCoreOption(index)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Remove option"
-                      >
-                        <X size={16} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveCoreOptionUp(index)}
+                          disabled={index === 0}
+                          className={`p-1 ${
+                            index === 0
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-600 hover:text-gray-800'
+                          }`}
+                          title="Move up"
+                        >
+                          <ArrowUp size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveCoreOptionDown(index)}
+                          disabled={index === coreFormData.options.length - 1}
+                          className={`p-1 ${
+                            index === coreFormData.options.length - 1
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-600 hover:text-gray-800'
+                          }`}
+                          title="Move down"
+                        >
+                          <ArrowDown size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCoreOption(index)}
+                          className="p-1 text-red-600 hover:text-red-800"
+                          title="Remove option"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -648,14 +712,42 @@ export default function SettingsPage() {
                   {formData.options.map((option, index) => (
                     <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
                       <span className="text-sm text-gray-700">{option}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveOption(index)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Remove option"
-                      >
-                        <X size={16} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveOptionUp(index)}
+                          disabled={index === 0}
+                          className={`p-1 ${
+                            index === 0
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-600 hover:text-gray-800'
+                          }`}
+                          title="Move up"
+                        >
+                          <ArrowUp size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveOptionDown(index)}
+                          disabled={index === formData.options.length - 1}
+                          className={`p-1 ${
+                            index === formData.options.length - 1
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'text-gray-600 hover:text-gray-800'
+                          }`}
+                          title="Move down"
+                        >
+                          <ArrowDown size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOption(index)}
+                          className="p-1 text-red-600 hover:text-red-800"
+                          title="Remove option"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
