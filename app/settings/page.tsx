@@ -1,17 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useCustomAttributes } from '@/hooks/useCustomAttributes';
+import { useLogo } from '@/hooks/useLogo';
 import { CustomAttribute } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Table, Column } from '@/components/ui/Table';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Upload, X, Building2 } from 'lucide-react';
 
 export default function SettingsPage() {
   const { attributes, createAttribute, updateAttribute, deleteAttribute } = useCustomAttributes();
+  const { logo, uploadLogo, removeLogo } = useLogo();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAttribute, setEditingAttribute] = useState<CustomAttribute | null>(null);
   const [formData, setFormData] = useState({
@@ -20,6 +23,33 @@ export default function SettingsPage() {
     required: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [logoError, setLogoError] = useState<string>('');
+  const [logoUploading, setLogoUploading] = useState(false);
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setLogoError('');
+    setLogoUploading(true);
+
+    try {
+      await uploadLogo(file);
+    } catch (error) {
+      setLogoError(error instanceof Error ? error.message : 'Failed to upload logo');
+    } finally {
+      setLogoUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleLogoRemove = () => {
+    if (confirm('Are you sure you want to remove the logo?')) {
+      removeLogo();
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -145,12 +175,70 @@ export default function SettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600 mt-1">Manage custom attributes for employees</p>
+          <p className="text-gray-600 mt-1">Manage company logo and custom attributes</p>
         </div>
         <Button variant="primary" onClick={() => openModal()}>
           <Plus size={18} className="mr-2" />
           Add Attribute
         </Button>
+      </div>
+
+      {/* Company Logo Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Company Logo</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Upload your company logo to display in the navigation bar. Maximum file size: 2MB.
+          </p>
+        </div>
+        <div className="p-6">
+          <div className="flex items-start gap-6">
+            <div className="flex-shrink-0">
+              {logo ? (
+                <div className="relative">
+                  <img
+                    src={logo}
+                    alt="Company Logo"
+                    className="h-24 w-24 object-contain border-2 border-gray-200 rounded-lg p-2"
+                  />
+                  <button
+                    onClick={handleLogoRemove}
+                    className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 transition-colors"
+                    title="Remove logo"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div className="h-24 w-24 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-gray-200 border-dashed">
+                  <Building2 size={32} className="text-gray-400" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                className="hidden"
+                id="logo-upload"
+              />
+              <label htmlFor="logo-upload" className="inline-block cursor-pointer">
+                <span className="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed bg-secondary text-white hover:bg-secondary-dark focus:ring-secondary px-4 py-2 text-base">
+                  <Upload size={18} className="mr-2" />
+                  {logoUploading ? 'Uploading...' : logo ? 'Change Logo' : 'Upload Logo'}
+                </span>
+              </label>
+              {logoError && (
+                <p className="text-sm text-red-600 mt-2">{logoError}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-2">
+                Recommended: Square image (PNG, JPG, or SVG) at least 200x200 pixels
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Core Attributes Section */}

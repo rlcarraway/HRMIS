@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   EXPORT_SCHEDULES: 'hrmis_export_schedules',
   EXPORT_METADATA: 'hrmis_export_metadata',
   EXPORT_LOGS: 'hrmis_export_logs',
+  LOGO: 'hrmis_logo',
 } as const;
 
 // Type-safe localStorage wrapper
@@ -197,6 +198,20 @@ class Storage {
     const logs = this.getExportLogs();
     logs.push(log);
     this.setItem(STORAGE_KEYS.EXPORT_LOGS, logs);
+  }
+
+  // Logo operations
+  getLogo(): string | null {
+    return this.getItem<string>(STORAGE_KEYS.LOGO);
+  }
+
+  setLogo(logoDataUrl: string): void {
+    this.setItem(STORAGE_KEYS.LOGO, logoDataUrl);
+  }
+
+  removeLogo(): void {
+    if (!this.isClient) return;
+    localStorage.removeItem(STORAGE_KEYS.LOGO);
   }
 }
 
