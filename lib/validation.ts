@@ -41,9 +41,22 @@ export const employeeSchema = z.object({
 // Custom attribute validation schema
 export const customAttributeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  dataType: z.enum(['string', 'number', 'date', 'boolean', 'currency']),
+  dataType: z.enum(['string', 'number', 'date', 'boolean', 'currency', 'select']),
   required: z.boolean(),
-});
+  options: z.array(z.string()).optional(),
+}).refine(
+  (data) => {
+    // If dataType is 'select', options must be provided and have at least one option
+    if (data.dataType === 'select') {
+      return data.options && data.options.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'At least one option is required for select type',
+    path: ['options'],
+  }
+);
 
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
 export type CustomAttributeFormData = z.infer<typeof customAttributeSchema>;

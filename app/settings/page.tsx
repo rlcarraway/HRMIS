@@ -21,7 +21,9 @@ export default function SettingsPage() {
     name: '',
     dataType: 'string' as CustomAttribute['dataType'],
     required: false,
+    options: [] as string[],
   });
+  const [newOption, setNewOption] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [logoError, setLogoError] = useState<string>('');
   const [logoUploading, setLogoUploading] = useState(false);
@@ -56,7 +58,9 @@ export default function SettingsPage() {
       name: '',
       dataType: 'string',
       required: false,
+      options: [],
     });
+    setNewOption('');
     setErrors({});
     setEditingAttribute(null);
   };
@@ -68,6 +72,7 @@ export default function SettingsPage() {
         name: attribute.name,
         dataType: attribute.dataType,
         required: attribute.required,
+        options: attribute.options || [],
       });
     } else {
       resetForm();
@@ -84,6 +89,9 @@ export default function SettingsPage() {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
+    }
+    if (formData.dataType === 'select' && formData.options.length === 0) {
+      newErrors.options = 'At least one option is required for select type';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -106,6 +114,26 @@ export default function SettingsPage() {
     }
   };
 
+  const handleAddOption = () => {
+    if (newOption.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        options: [...prev.options, newOption.trim()],
+      }));
+      setNewOption('');
+      if (errors.options) {
+        setErrors(prev => ({ ...prev, options: '' }));
+      }
+    }
+  };
+
+  const handleRemoveOption = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      options: prev.options.filter((_, i) => i !== index),
+    }));
+  };
+
   const columns: Column<CustomAttribute>[] = [
     {
       key: 'name',
@@ -117,7 +145,16 @@ export default function SettingsPage() {
       header: 'Data Type',
       sortable: true,
       render: (attr) => (
-        <span className="capitalize">{attr.dataType}</span>
+        <div>
+          <span className="capitalize">
+            {attr.dataType === 'select' ? 'Dropdown' : attr.dataType === 'string' ? 'Text' : attr.dataType === 'boolean' ? 'Yes/No' : attr.dataType}
+          </span>
+          {attr.dataType === 'select' && attr.options && attr.options.length > 0 && (
+            <div className="text-xs text-gray-500 mt-1">
+              ({attr.options.length} option{attr.options.length !== 1 ? 's' : ''})
+            </div>
+          )}
+        </div>
       ),
     },
     {
@@ -286,11 +323,20 @@ export default function SettingsPage() {
                     {attr.dataType}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      attr.required ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {attr.required ? 'Yes' : 'No'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={attr.required}
+                        disabled
+                        className="w-4 h-4 text-primary border-gray-300 rounded opacity-50 cursor-not-allowed"
+                        title="Core attributes cannot be modified"
+                      />
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        attr.required ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {attr.required ? 'Yes' : 'No'}
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -343,16 +389,69 @@ export default function SettingsPage() {
           <Select
             label="Data Type"
             value={formData.dataType}
-            onChange={(e) => setFormData({ ...formData, dataType: e.target.value as CustomAttribute['dataType'] })}
+            onChange={(e) => {
+              const newDataType = e.target.value as CustomAttribute['dataType'];
+              setFormData({ ...formData, dataType: newDataType });
+              // Clear options if switching away from select type
+              if (newDataType !== 'select') {
+                setFormData(prev => ({ ...prev, options: [] }));
+              }
+            }}
             options={[
               { value: 'string', label: 'Text' },
               { value: 'number', label: 'Number' },
               { value: 'date', label: 'Date' },
               { value: 'boolean', label: 'Yes/No' },
               { value: 'currency', label: 'Currency' },
+              { value: 'select', label: 'Dropdown' },
             ]}
             required
           />
+
+          {formData.dataType === 'select' && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Dropdown Options
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  value={newOption}
+                  onChange={(e) => setNewOption(e.target.value)}
+                  placeholder="Enter option"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddOption();
+                    }
+                  }}
+                />
+                <Button type="button" variant="secondary" onClick={handleAddOption}>
+                  Add
+                </Button>
+              </div>
+              {errors.options && (
+                <p className="text-sm text-red-600">{errors.options}</p>
+              )}
+              {formData.options.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {formData.options.map((option, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
+                      <span className="text-sm text-gray-700">{option}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOption(index)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Remove option"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <input

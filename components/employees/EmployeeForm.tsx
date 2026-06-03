@@ -210,6 +210,23 @@ export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps
                 );
               }
 
+              if (attr.dataType === 'select' && attr.options) {
+                return (
+                  <Select
+                    key={attr.id}
+                    label={attr.name}
+                    value={value as string || ''}
+                    onChange={(e) => handleCustomAttributeChange(attr.name, e.target.value)}
+                    options={[
+                      { value: '', label: '-- Select --' },
+                      ...attr.options.map(opt => ({ value: opt, label: opt })),
+                    ]}
+                    error={error}
+                    required={attr.required}
+                  />
+                );
+              }
+
               return (
                 <Input
                   key={attr.id}

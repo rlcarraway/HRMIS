@@ -23,8 +23,9 @@ export type CustomAttributeValue = string | number | boolean;
 export interface CustomAttribute {
   id: string;
   name: string;
-  dataType: 'string' | 'number' | 'date' | 'boolean' | 'currency';
+  dataType: 'string' | 'number' | 'date' | 'boolean' | 'currency' | 'select';
   required: boolean;
+  options?: string[]; // For 'select' type - list of selectable options
 }
 
 // Change history entry
