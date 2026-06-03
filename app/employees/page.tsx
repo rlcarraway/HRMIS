@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useCustomAttributes } from '@/hooks/useCustomAttributes';
 import { useExportSchedules } from '@/hooks/useExportSchedules';
@@ -20,10 +20,35 @@ import Link from 'next/link';
 
 export default function EmployeesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { employees, loading, deleteEmployee, bulkCreateEmployees, filterEmployees } = useEmployees();
   const { customAttributes } = useCustomAttributes();
   const { schedules, createSchedule, updateSchedule, deleteSchedule, executeSchedule, refreshMetadata } = useExportSchedules();
   const [filters, setFilters] = useState<EmployeeFilters>({});
+
+  // Apply URL query parameters as initial filters
+  useEffect(() => {
+    const initialFilters: EmployeeFilters = {};
+
+    const status = searchParams.get('status');
+    if (status && (status === 'active' || status === 'inactive' || status === 'terminated')) {
+      initialFilters.status = status;
+    }
+
+    const type = searchParams.get('type');
+    if (type && (type === 'employee' || type === 'contractor')) {
+      initialFilters.type = type;
+    }
+
+    const department = searchParams.get('department');
+    if (department) {
+      initialFilters.department = department;
+    }
+
+    if (Object.keys(initialFilters).length > 0) {
+      setFilters(initialFilters);
+    }
+  }, [searchParams]);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showSchedulerModal, setShowSchedulerModal] = useState(false);
@@ -271,7 +296,7 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      <FilterPanel onFilterChange={setFilters} departments={departments} />
+      <FilterPanel onFilterChange={setFilters} departments={departments} initialFilters={filters} />
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-4 border-b border-gray-200">

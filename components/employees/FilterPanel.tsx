@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EmployeeFilters } from '@/lib/types';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -10,9 +10,10 @@ import { Filter, X } from 'lucide-react';
 interface FilterPanelProps {
   onFilterChange: (filters: EmployeeFilters) => void;
   departments: string[];
+  initialFilters?: EmployeeFilters;
 }
 
-export function FilterPanel({ onFilterChange, departments }: FilterPanelProps) {
+export function FilterPanel({ onFilterChange, departments, initialFilters }: FilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [filters, setFilters] = useState<EmployeeFilters>({
     search: '',
@@ -22,6 +23,24 @@ export function FilterPanel({ onFilterChange, departments }: FilterPanelProps) {
     fromDate: '',
     toDate: '',
   });
+
+  // Apply initial filters from props (e.g., from URL params)
+  useEffect(() => {
+    if (initialFilters && Object.keys(initialFilters).length > 0) {
+      const newFilters = {
+        search: initialFilters.search || '',
+        status: initialFilters.status || 'all',
+        type: initialFilters.type || 'all',
+        department: initialFilters.department || '',
+        fromDate: initialFilters.fromDate || '',
+        toDate: initialFilters.toDate || '',
+      };
+      setFilters(newFilters);
+      onFilterChange(newFilters);
+      // Open filter panel if there are initial filters
+      setIsOpen(true);
+    }
+  }, [initialFilters, onFilterChange]);
 
   const handleFilterChange = (field: keyof EmployeeFilters, value: any) => {
     const newFilters = { ...filters, [field]: value };

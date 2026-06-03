@@ -44,36 +44,42 @@ export default function DashboardPage() {
           value={stats.total}
           icon={Users}
           color="blue"
+          href="/employees"
         />
         <StatCard
           title="Active"
           value={stats.active}
           icon={UserCheck}
           color="green"
+          href="/employees?status=active"
         />
         <StatCard
           title="Inactive"
           value={stats.inactive}
           icon={UserX}
           color="amber"
+          href="/employees?status=inactive"
         />
         <StatCard
           title="Terminated"
           value={stats.terminated}
           icon={AlertCircle}
           color="red"
+          href="/employees?status=terminated"
         />
         <StatCard
           title="Employees"
           value={stats.employees}
           icon={UserCog}
           color="blue"
+          href="/employees?type=employee"
         />
         <StatCard
           title="Contractors"
           value={stats.contractors}
           icon={Briefcase}
           color="purple"
+          href="/employees?type=contractor"
         />
       </div>
 
@@ -83,10 +89,12 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold mb-4">By Department</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(stats.byDepartment).map(([dept, count]) => (
-              <div key={dept} className="text-center p-4 bg-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-primary">{count}</p>
-                <p className="text-sm text-gray-600 mt-1">{dept}</p>
-              </div>
+              <Link key={dept} href={`/employees?department=${encodeURIComponent(dept)}`}>
+                <div className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 hover:shadow-md transition-all cursor-pointer">
+                  <p className="text-2xl font-bold text-primary">{count}</p>
+                  <p className="text-sm text-gray-600 mt-1">{dept}</p>
+                </div>
+              </Link>
             ))}
           </div>
         </div>
