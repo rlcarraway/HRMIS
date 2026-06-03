@@ -28,13 +28,22 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <Link href="/employees/new">
-          <Button variant="primary">
-            Add Employee
-          </Button>
-        </Link>
+      <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/employees/new">
+            <Button variant="primary">Add New Employee</Button>
+          </Link>
+          <Link href="/employees">
+            <Button variant="secondary">View All Employees</Button>
+          </Link>
+          <Link href="/settings">
+            <Button variant="ghost">Manage Custom Attributes</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -114,22 +123,6 @@ export default function DashboardPage() {
           )}
         </div>
         <RecentChanges history={history} limit={5} />
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/employees/new">
-            <Button variant="primary">Add New Employee</Button>
-          </Link>
-          <Link href="/employees">
-            <Button variant="secondary">View All Employees</Button>
-          </Link>
-          <Link href="/settings">
-            <Button variant="ghost">Manage Custom Attributes</Button>
-          </Link>
-        </div>
       </div>
     </div>
   );
