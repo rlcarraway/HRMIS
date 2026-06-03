@@ -125,11 +125,23 @@ export default function SettingsPage() {
       header: 'Required',
       sortable: true,
       render: (attr) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          attr.required ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-        }`}>
-          {attr.required ? 'Yes' : 'No'}
-        </span>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={attr.required}
+            onChange={(e) => {
+              e.stopPropagation();
+              updateAttribute(attr.id, { required: e.target.checked });
+            }}
+            className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer"
+            title={attr.required ? 'Mark as optional' : 'Mark as required'}
+          />
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            attr.required ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+          }`}>
+            {attr.required ? 'Yes' : 'No'}
+          </span>
+        </div>
       ),
     },
     {
