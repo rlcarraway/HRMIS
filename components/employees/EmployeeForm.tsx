@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { useCustomAttributes } from '@/hooks/useCustomAttributes';
+import { useCoreAttributes } from '@/hooks/useCoreAttributes';
 
 interface EmployeeFormProps {
   employee?: Employee;
@@ -15,6 +16,7 @@ interface EmployeeFormProps {
 
 export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps) {
   const { attributes } = useCustomAttributes();
+  const { attributes: coreAttributesConfig } = useCoreAttributes();
   const [formData, setFormData] = useState({
     type: employee?.type || 'employee',
     firstName: employee?.firstName || '',
@@ -87,100 +89,69 @@ export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps
     }));
   };
 
+  const renderCoreField = (config: any) => {
+    const fieldName = config.fieldName;
+    const value = formData[fieldName as keyof typeof formData] || '';
+    const error = errors[fieldName];
+
+    // Special handling for endDate - only show for contractors
+    if (fieldName === 'endDate' && formData.type !== 'contractor') {
+      return null;
+    }
+
+    if (config.dataType === 'boolean') {
+      return (
+        <div key={fieldName} className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id={fieldName}
+            checked={!!value}
+            onChange={(e) => handleChange(fieldName, e.target.checked)}
+            className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded"
+          />
+          <label htmlFor={fieldName} className="text-sm font-medium text-gray-700">
+            {config.displayName}
+            {config.required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+        </div>
+      );
+    }
+
+    if (config.dataType === 'select' && config.options) {
+      return (
+        <Select
+          key={fieldName}
+          label={config.displayName}
+          value={value as string}
+          onChange={(e) => handleChange(fieldName, e.target.value)}
+          options={config.options.map((opt: string) => ({ value: opt, label: opt.charAt(0).toUpperCase() + opt.slice(1) }))}
+          error={error}
+          required={config.required}
+        />
+      );
+    }
+
+    return (
+      <Input
+        key={fieldName}
+        label={config.displayName}
+        type={
+          config.dataType === 'number' || config.dataType === 'currency' ? 'number' :
+          config.dataType === 'date' ? 'date' :
+          fieldName === 'email' ? 'email' : 'text'
+        }
+        value={typeof value === 'boolean' ? String(value) : value as string}
+        onChange={(e) => handleChange(fieldName, e.target.value)}
+        error={error}
+        required={config.required}
+      />
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Select
-          label="Type"
-          value={formData.type}
-          onChange={(e) => handleChange('type', e.target.value)}
-          options={[
-            { value: 'employee', label: 'Employee' },
-            { value: 'contractor', label: 'Contractor' },
-          ]}
-          required
-        />
-
-        <Select
-          label="Status"
-          value={formData.status}
-          onChange={(e) => handleChange('status', e.target.value)}
-          options={[
-            { value: 'active', label: 'Active' },
-            { value: 'inactive', label: 'Inactive' },
-            { value: 'terminated', label: 'Terminated' },
-          ]}
-          required
-        />
-
-        <Input
-          label="First Name"
-          value={formData.firstName}
-          onChange={(e) => handleChange('firstName', e.target.value)}
-          error={errors.firstName}
-          required
-        />
-
-        <Input
-          label="Last Name"
-          value={formData.lastName}
-          onChange={(e) => handleChange('lastName', e.target.value)}
-          error={errors.lastName}
-          required
-        />
-
-        <Input
-          label="Email"
-          type="email"
-          value={formData.email}
-          onChange={(e) => handleChange('email', e.target.value)}
-          error={errors.email}
-          required
-        />
-
-        <Input
-          label="Department"
-          value={formData.department}
-          onChange={(e) => handleChange('department', e.target.value)}
-          error={errors.department}
-          required
-        />
-
-        <Input
-          label="Title"
-          value={formData.title}
-          onChange={(e) => handleChange('title', e.target.value)}
-          error={errors.title}
-          required
-        />
-
-        <Input
-          label="Manager"
-          value={formData.manager}
-          onChange={(e) => handleChange('manager', e.target.value)}
-          error={errors.manager}
-          required
-        />
-
-        <Input
-          label="Start Date"
-          type="date"
-          value={formData.startDate}
-          onChange={(e) => handleChange('startDate', e.target.value)}
-          error={errors.startDate}
-          required
-        />
-
-        {formData.type === 'contractor' && (
-          <Input
-            label="End Date"
-            type="date"
-            value={formData.endDate}
-            onChange={(e) => handleChange('endDate', e.target.value)}
-            error={errors.endDate}
-            required
-          />
-        )}
+        {coreAttributesConfig.map(config => renderCoreField(config))}
       </div>
 
       {/* Custom Attributes */}

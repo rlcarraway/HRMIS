@@ -28,6 +28,17 @@ export interface CustomAttribute {
   options?: string[]; // For 'select' type - list of selectable options
 }
 
+// Core attribute configuration
+export interface CoreAttributeConfig {
+  id: string;
+  fieldName: keyof Omit<Employee, 'id' | 'customAttributes' | 'createdAt' | 'updatedAt'>; // Field name in Employee interface
+  displayName: string;
+  dataType: 'string' | 'number' | 'date' | 'boolean' | 'currency' | 'select';
+  required: boolean;
+  options?: string[]; // For 'select' type - list of selectable options
+  locked?: boolean; // If true, cannot be deleted (for critical fields)
+}
+
 // Change history entry
 export interface ChangeHistory {
   id: string;

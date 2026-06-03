@@ -2,8 +2,9 @@
 
 import { useState, useRef } from 'react';
 import { useCustomAttributes } from '@/hooks/useCustomAttributes';
+import { useCoreAttributes } from '@/hooks/useCoreAttributes';
 import { useLogo } from '@/hooks/useLogo';
-import { CustomAttribute } from '@/lib/types';
+import { CustomAttribute, CoreAttributeConfig } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -13,18 +14,29 @@ import { Plus, Edit, Trash2, Upload, X, Building2 } from 'lucide-react';
 
 export default function SettingsPage() {
   const { attributes, createAttribute, updateAttribute, deleteAttribute } = useCustomAttributes();
+  const { attributes: coreAttributes, updateAttribute: updateCoreAttribute, resetToDefaults } = useCoreAttributes();
   const { logo, uploadLogo, removeLogo } = useLogo();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCoreModalOpen, setIsCoreModalOpen] = useState(false);
   const [editingAttribute, setEditingAttribute] = useState<CustomAttribute | null>(null);
+  const [editingCoreAttribute, setEditingCoreAttribute] = useState<CoreAttributeConfig | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     dataType: 'string' as CustomAttribute['dataType'],
     required: false,
     options: [] as string[],
   });
+  const [coreFormData, setCoreFormData] = useState({
+    displayName: '',
+    dataType: 'string' as CoreAttributeConfig['dataType'],
+    required: false,
+    options: [] as string[],
+  });
   const [newOption, setNewOption] = useState('');
+  const [newCoreOption, setNewCoreOption] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [coreErrors, setCoreErrors] = useState<Record<string, string>>({});
   const [logoError, setLogoError] = useState<string>('');
   const [logoUploading, setLogoUploading] = useState(false);
 
@@ -134,6 +146,70 @@ export default function SettingsPage() {
     }));
   };
 
+  // Core attribute handlers
+  const openCoreModal = (attribute: CoreAttributeConfig) => {
+    setEditingCoreAttribute(attribute);
+    setCoreFormData({
+      displayName: attribute.displayName,
+      dataType: attribute.dataType,
+      required: attribute.required,
+      options: attribute.options || [],
+    });
+    setIsCoreModalOpen(true);
+  };
+
+  const closeCoreModal = () => {
+    setIsCoreModalOpen(false);
+    setCoreFormData({
+      displayName: '',
+      dataType: 'string',
+      required: false,
+      options: [],
+    });
+    setNewCoreOption('');
+    setCoreErrors({});
+    setEditingCoreAttribute(null);
+  };
+
+  const validateCoreAttribute = () => {
+    const newErrors: Record<string, string> = {};
+    if (!coreFormData.displayName.trim()) {
+      newErrors.displayName = 'Display name is required';
+    }
+    if (coreFormData.dataType === 'select' && coreFormData.options.length === 0) {
+      newErrors.options = 'At least one option is required for select type';
+    }
+    setCoreErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleCoreSubmit = () => {
+    if (!validateCoreAttribute() || !editingCoreAttribute) return;
+
+    updateCoreAttribute(editingCoreAttribute.id, coreFormData);
+    closeCoreModal();
+  };
+
+  const handleAddCoreOption = () => {
+    if (newCoreOption.trim()) {
+      setCoreFormData(prev => ({
+        ...prev,
+        options: [...prev.options, newCoreOption.trim()],
+      }));
+      setNewCoreOption('');
+      if (coreErrors.options) {
+        setCoreErrors(prev => ({ ...prev, options: '' }));
+      }
+    }
+  };
+
+  const handleRemoveCoreOption = (index: number) => {
+    setCoreFormData(prev => ({
+      ...prev,
+      options: prev.options.filter((_, i) => i !== index),
+    }));
+  };
+
   const columns: Column<CustomAttribute>[] = [
     {
       key: 'name',
@@ -205,19 +281,16 @@ export default function SettingsPage() {
     },
   ];
 
-  // Core attributes that come with every employee
-  const coreAttributes = [
-    { name: 'Type', dataType: 'Employee or Contractor', required: true },
-    { name: 'First Name', dataType: 'Text', required: true },
-    { name: 'Last Name', dataType: 'Text', required: true },
-    { name: 'Email', dataType: 'Text', required: true },
-    { name: 'Department', dataType: 'Text', required: true },
-    { name: 'Title', dataType: 'Text', required: true },
-    { name: 'Manager', dataType: 'Text', required: true },
-    { name: 'Status', dataType: 'Active, Inactive, or Terminated', required: true },
-    { name: 'Start Date', dataType: 'Date', required: true },
-    { name: 'End Date', dataType: 'Date', required: false },
-  ];
+  const formatDataType = (attr: CoreAttributeConfig) => {
+    if (attr.dataType === 'select' && attr.options && attr.options.length > 0) {
+      return `Dropdown (${attr.options.join(', ')})`;
+    }
+    return attr.dataType === 'string' ? 'Text' :
+           attr.dataType === 'boolean' ? 'Yes/No' :
+           attr.dataType === 'date' ? 'Date' :
+           attr.dataType === 'number' ? 'Number' :
+           attr.dataType === 'currency' ? 'Currency' : attr.dataType;
+  };
 
   return (
     <div className="space-y-6">
@@ -293,10 +366,17 @@ export default function SettingsPage() {
       {/* Core Attributes Section */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Core Attributes</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            These attributes are included with every employee record and cannot be modified.
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Core Attributes</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                These attributes are included with every employee record. Click edit to customize data types and options.
+              </p>
+            </div>
+            <Button variant="ghost" onClick={resetToDefaults} className="text-sm">
+              Reset to Defaults
+            </Button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -311,25 +391,35 @@ export default function SettingsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Required
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {coreAttributes.map((attr, index) => (
-                <tr key={index} className="hover:bg-gray-50">
+              {coreAttributes.map((attr) => (
+                <tr key={attr.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {attr.name}
+                    {attr.displayName}
+                    {attr.locked && <span className="ml-2 text-xs text-gray-500">(locked)</span>}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {attr.dataType}
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {formatDataType(attr)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         checked={attr.required}
-                        disabled
-                        className="w-4 h-4 text-primary border-gray-300 rounded opacity-50 cursor-not-allowed"
-                        title="Core attributes cannot be modified"
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          updateCoreAttribute(attr.id, { required: e.target.checked });
+                        }}
+                        disabled={attr.locked}
+                        className={`w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded ${
+                          attr.locked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        }`}
+                        title={attr.locked ? 'Locked attributes cannot be modified' : (attr.required ? 'Mark as optional' : 'Mark as required')}
                       />
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         attr.required ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
@@ -337,6 +427,15 @@ export default function SettingsPage() {
                         {attr.required ? 'Yes' : 'No'}
                       </span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => openCoreModal(attr)}
+                      className="text-blue-600 hover:text-blue-800"
+                      title="Edit"
+                    >
+                      <Edit size={18} />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -360,7 +459,118 @@ export default function SettingsPage() {
         />
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Core Attribute Edit Modal */}
+      <Modal
+        isOpen={isCoreModalOpen}
+        onClose={closeCoreModal}
+        title={`Edit Core Attribute: ${editingCoreAttribute?.displayName}`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={closeCoreModal}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleCoreSubmit}>
+              Update
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Input
+            label="Display Name"
+            value={coreFormData.displayName}
+            onChange={(e) => setCoreFormData({ ...coreFormData, displayName: e.target.value })}
+            error={coreErrors.displayName}
+            placeholder="e.g., Department, Job Title"
+            required
+          />
+
+          <Select
+            label="Data Type"
+            value={coreFormData.dataType}
+            onChange={(e) => {
+              const newDataType = e.target.value as CoreAttributeConfig['dataType'];
+              setCoreFormData({ ...coreFormData, dataType: newDataType });
+              if (newDataType !== 'select') {
+                setCoreFormData(prev => ({ ...prev, options: [] }));
+              }
+            }}
+            options={[
+              { value: 'string', label: 'Text' },
+              { value: 'number', label: 'Number' },
+              { value: 'date', label: 'Date' },
+              { value: 'boolean', label: 'Yes/No' },
+              { value: 'currency', label: 'Currency' },
+              { value: 'select', label: 'Dropdown' },
+            ]}
+            required
+          />
+
+          {coreFormData.dataType === 'select' && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Dropdown Options
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  value={newCoreOption}
+                  onChange={(e) => setNewCoreOption(e.target.value)}
+                  placeholder="Enter option"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCoreOption();
+                    }
+                  }}
+                />
+                <Button type="button" variant="secondary" onClick={handleAddCoreOption}>
+                  Add
+                </Button>
+              </div>
+              {coreErrors.options && (
+                <p className="text-sm text-red-600">{coreErrors.options}</p>
+              )}
+              {coreFormData.options.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {coreFormData.options.map((option, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
+                      <span className="text-sm text-gray-700">{option}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCoreOption(index)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Remove option"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="coreRequired"
+              checked={coreFormData.required}
+              onChange={(e) => setCoreFormData({ ...coreFormData, required: e.target.checked })}
+              disabled={editingCoreAttribute?.locked}
+              className={`w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded ${
+                editingCoreAttribute?.locked ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            />
+            <label htmlFor="coreRequired" className="text-sm font-medium text-gray-700">
+              Required field
+              {editingCoreAttribute?.locked && <span className="ml-2 text-xs text-gray-500">(locked)</span>}
+            </label>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add/Edit Custom Attribute Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}

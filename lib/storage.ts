@@ -1,14 +1,29 @@
-import { Employee, CustomAttribute, ChangeHistory, ExportSchedule, ExportMetadata, ScheduledExportLog } from './types';
+import { Employee, CustomAttribute, ChangeHistory, ExportSchedule, ExportMetadata, ScheduledExportLog, CoreAttributeConfig } from './types';
 
 const STORAGE_KEYS = {
   EMPLOYEES: 'hrmis_employees',
   CUSTOM_ATTRIBUTES: 'hrmis_custom_attributes',
+  CORE_ATTRIBUTES: 'hrmis_core_attributes',
   HISTORY: 'hrmis_history',
   EXPORT_SCHEDULES: 'hrmis_export_schedules',
   EXPORT_METADATA: 'hrmis_export_metadata',
   EXPORT_LOGS: 'hrmis_export_logs',
   LOGO: 'hrmis_logo',
 } as const;
+
+// Default core attributes configuration
+const DEFAULT_CORE_ATTRIBUTES: CoreAttributeConfig[] = [
+  { id: '1', fieldName: 'type', displayName: 'Type', dataType: 'select', required: true, options: ['employee', 'contractor'], locked: true },
+  { id: '2', fieldName: 'firstName', displayName: 'First Name', dataType: 'string', required: true, locked: true },
+  { id: '3', fieldName: 'lastName', displayName: 'Last Name', dataType: 'string', required: true, locked: true },
+  { id: '4', fieldName: 'email', displayName: 'Email', dataType: 'string', required: true, locked: true },
+  { id: '5', fieldName: 'department', displayName: 'Department', dataType: 'string', required: true },
+  { id: '6', fieldName: 'title', displayName: 'Title', dataType: 'string', required: true },
+  { id: '7', fieldName: 'manager', displayName: 'Manager', dataType: 'string', required: true },
+  { id: '8', fieldName: 'status', displayName: 'Status', dataType: 'select', required: true, options: ['active', 'inactive', 'terminated'], locked: true },
+  { id: '9', fieldName: 'startDate', displayName: 'Start Date', dataType: 'date', required: true },
+  { id: '10', fieldName: 'endDate', displayName: 'End Date', dataType: 'date', required: false },
+];
 
 // Type-safe localStorage wrapper
 class Storage {
@@ -212,6 +227,27 @@ class Storage {
   removeLogo(): void {
     if (!this.isClient) return;
     localStorage.removeItem(STORAGE_KEYS.LOGO);
+  }
+
+  // Core attributes configuration operations
+  getCoreAttributes(): CoreAttributeConfig[] {
+    const stored = this.getItem<CoreAttributeConfig[]>(STORAGE_KEYS.CORE_ATTRIBUTES);
+    // Return stored config or default if none exists
+    return stored || DEFAULT_CORE_ATTRIBUTES;
+  }
+
+  setCoreAttributes(attributes: CoreAttributeConfig[]): void {
+    this.setItem(STORAGE_KEYS.CORE_ATTRIBUTES, attributes);
+  }
+
+  updateCoreAttribute(id: string, updates: Partial<CoreAttributeConfig>): CoreAttributeConfig | null {
+    const attributes = this.getCoreAttributes();
+    const index = attributes.findIndex(attr => attr.id === id);
+    if (index === -1) return null;
+
+    attributes[index] = { ...attributes[index], ...updates };
+    this.setCoreAttributes(attributes);
+    return attributes[index];
   }
 }
 
