@@ -2,13 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { storage } from '@/lib/storage';
 import { calculateNextScheduledTime } from '@/lib/utils';
 import { registerSchedule, unregisterSchedule } from '@/lib/scheduler';
+import { logConfigChange } from '@/lib/serverAuditLog';
+import { authenticateApiRequest } from '@/lib/apiAuth';
+
+export const dynamic = 'force-dynamic';
 
 // GET /api/export-schedules/[id] - Get single schedule
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // Require authentication
+    const auth = await authenticateApiRequest(request);
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const schedule = storage.getExportSchedule(params.id);
 
     if (!schedule) {
@@ -36,6 +49,15 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Require authentication
+    const auth = await authenticateApiRequest(request);
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     // Check if schedule exists
@@ -83,6 +105,25 @@ export async function PUT(
       }
     }
 
+    // Log the schedule update
+    logConfigChange(
+      'config.export_schedule.update',
+      `Updated export schedule: ${updatedSchedule.name}`,
+      {
+        userId: auth.user.email,
+        userName: auth.user.name,
+        userEmail: auth.user.email,
+        success: true,
+        details: {
+          scheduleId: updatedSchedule.id,
+          scheduleName: updatedSchedule.name,
+          updatedFields: Object.keys(body),
+          authType: auth.user.authType,
+          clientId: auth.user.clientId,
+        },
+      }
+    );
+
     return NextResponse.json({
       success: true,
       data: updatedSchedule,
@@ -98,10 +139,20 @@ export async function PUT(
 
 // DELETE /api/export-schedules/[id] - Delete schedule
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // Require authentication
+    const auth = await authenticateApiRequest(request);
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const schedule = storage.getExportSchedule(params.id);
     const success = storage.deleteExportSchedule(params.id);
 
     if (!success) {
@@ -113,6 +164,24 @@ export async function DELETE(
 
     // Unregister from scheduler
     unregisterSchedule(params.id);
+
+    // Log the schedule deletion
+    logConfigChange(
+      'config.export_schedule.delete',
+      `Deleted export schedule: ${schedule?.name || params.id}`,
+      {
+        userId: auth.user.email,
+        userName: auth.user.name,
+        userEmail: auth.user.email,
+        success: true,
+        details: {
+          scheduleId: params.id,
+          scheduleName: schedule?.name,
+          authType: auth.user.authType,
+          clientId: auth.user.clientId,
+        },
+      }
+    );
 
     return NextResponse.json({
       success: true,

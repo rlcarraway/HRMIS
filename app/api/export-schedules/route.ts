@@ -4,11 +4,24 @@ import { exportScheduleSchema } from '@/lib/validation';
 import { generateId, calculateNextScheduledTime } from '@/lib/utils';
 import { ExportSchedule } from '@/lib/types';
 import { registerSchedule } from '@/lib/scheduler';
+import { logConfigChange } from '@/lib/serverAuditLog';
+import { authenticateApiRequest } from '@/lib/apiAuth';
 import '@/lib/server-init'; // Initialize server on first import
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/export-schedules - List all schedules
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Require authentication
+    const auth = await authenticateApiRequest(request);
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const schedules = storage.getExportSchedules();
     return NextResponse.json({
       success: true,
@@ -26,6 +39,15 @@ export async function GET() {
 // POST /api/export-schedules - Create new schedule
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication
+    const auth = await authenticateApiRequest(request);
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate input
@@ -66,6 +88,27 @@ export async function POST(request: NextRequest) {
 
     // Register with scheduler
     registerSchedule(scheduleData);
+
+    // Log the schedule creation
+    logConfigChange(
+      'config.export_schedule.create',
+      `Created export schedule: ${scheduleData.name}`,
+      {
+        userId: auth.user.email,
+        userName: auth.user.name,
+        userEmail: auth.user.email,
+        success: true,
+        details: {
+          scheduleId: scheduleData.id,
+          scheduleName: scheduleData.name,
+          frequency: scheduleData.frequency,
+          enabled: scheduleData.enabled,
+          exportType: scheduleData.exportType,
+          authType: auth.user.authType,
+          clientId: auth.user.clientId,
+        },
+      }
+    );
 
     return NextResponse.json({
       success: true,
