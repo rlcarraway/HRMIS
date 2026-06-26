@@ -25,6 +25,7 @@ export function FilterPanel({ onFilterChange, departments, initialFilters }: Fil
   });
 
   // Apply initial filters from props (e.g., from URL params)
+  // Only run on mount to avoid infinite loops
   useEffect(() => {
     if (initialFilters && Object.keys(initialFilters).length > 0) {
       const newFilters = {
@@ -36,11 +37,11 @@ export function FilterPanel({ onFilterChange, departments, initialFilters }: Fil
         toDate: initialFilters.toDate || '',
       };
       setFilters(newFilters);
-      onFilterChange(newFilters);
       // Open filter panel if there are initial filters
       setIsOpen(true);
     }
-  }, [initialFilters, onFilterChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFilterChange = (field: keyof EmployeeFilters, value: any) => {
     const newFilters = { ...filters, [field]: value };

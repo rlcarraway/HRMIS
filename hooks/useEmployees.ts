@@ -2,90 +2,101 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Employee, EmployeeFilters } from '@/lib/types';
-import { storage } from '@/lib/storage';
-import { generateId, getObjectDiff } from '@/lib/utils';
-import { useHistory } from './useHistory';
 
 export function useEmployees() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  const { addHistoryEntry } = useHistory();
 
-  // Load employees from storage
-  useEffect(() => {
-    const loadEmployees = () => {
-      const stored = storage.getEmployees();
-      setEmployees(stored);
+  // Load employees from API
+  const loadEmployees = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/employees');
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setEmployees(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading employees:', error);
+    } finally {
       setLoading(false);
-    };
-    loadEmployees();
+    }
   }, []);
 
+  useEffect(() => {
+    loadEmployees();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Create new employee
-  const createEmployee = useCallback((employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const now = new Date().toISOString();
-    const newEmployee: Employee = {
-      ...employeeData,
-      id: generateId(),
-      createdAt: now,
-      updatedAt: now,
-    };
+  const createEmployee = useCallback(async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const response = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(employeeData),
+      });
 
-    storage.addEmployee(newEmployee);
-    setEmployees(prev => [...prev, newEmployee]);
+      const result = await response.json();
 
-    // Add to history
-    addHistoryEntry({
-      employeeId: newEmployee.id,
-      action: 'create',
-      changes: {},
-    });
-
-    return newEmployee;
-  }, [addHistoryEntry]);
+      if (result.success && result.data) {
+        setEmployees(prev => [...prev, result.data]);
+        return result.data;
+      } else {
+        console.error('Failed to create employee:', result.error);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error creating employee:', error);
+      return null;
+    }
+  }, []);
 
   // Update employee
-  const updateEmployee = useCallback((id: string, updates: Partial<Employee>) => {
-    const oldEmployee = employees.find(emp => emp.id === id);
-    if (!oldEmployee) return null;
+  const updateEmployee = useCallback(async (id: string, updates: Partial<Employee>) => {
+    try {
+      const response = await fetch(`/api/employees/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
 
-    const updatedEmployee = storage.updateEmployee(id, updates);
-    if (updatedEmployee) {
-      setEmployees(prev => prev.map(emp => emp.id === id ? updatedEmployee : emp));
+      const result = await response.json();
 
-      // Track changes
-      const changes = getObjectDiff(oldEmployee, updatedEmployee);
-      if (Object.keys(changes).length > 0) {
-        addHistoryEntry({
-          employeeId: id,
-          action: 'update',
-          changes,
-        });
+      if (result.success && result.data) {
+        setEmployees(prev => prev.map(emp => emp.id === id ? result.data : emp));
+        return result.data;
+      } else {
+        console.error('Failed to update employee:', result.error);
+        return null;
       }
+    } catch (error) {
+      console.error('Error updating employee:', error);
+      return null;
     }
-
-    return updatedEmployee;
-  }, [employees, addHistoryEntry]);
+  }, []);
 
   // Delete employee
-  const deleteEmployee = useCallback((id: string) => {
-    const employee = employees.find(emp => emp.id === id);
-    if (!employee) return false;
-
-    const success = storage.deleteEmployee(id);
-    if (success) {
-      setEmployees(prev => prev.filter(emp => emp.id !== id));
-
-      // Add to history
-      addHistoryEntry({
-        employeeId: id,
-        action: 'delete',
-        changes: {},
+  const deleteEmployee = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(`/api/employees/${id}`, {
+        method: 'DELETE',
       });
-    }
 
-    return success;
-  }, [employees, addHistoryEntry]);
+      const result = await response.json();
+
+      if (result.success) {
+        setEmployees(prev => prev.filter(emp => emp.id !== id));
+        return true;
+      } else {
+        console.error('Failed to delete employee:', result.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      return false;
+    }
+  }, []);
 
   // Get single employee
   const getEmployee = useCallback((id: string) => {
@@ -93,36 +104,20 @@ export function useEmployees() {
   }, [employees]);
 
   // Bulk create employees (for CSV import)
-  const bulkCreateEmployees = useCallback((employeesData: Array<Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>>) => {
-    const now = new Date().toISOString();
-    const newEmployees = employeesData.map(data => {
-      const employee: Employee = {
-        ...data,
-        id: generateId(),
-        createdAt: now,
-        updatedAt: now,
-      };
+  const bulkCreateEmployees = useCallback(async (employeesData: Array<Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    const createdEmployees: Employee[] = [];
 
-      // Add history entry for each employee
-      addHistoryEntry({
-        employeeId: employee.id,
-        action: 'create',
-        changes: {},
-        changedBy: 'CSV Import',
-      });
+    for (const data of employeesData) {
+      const employee = await createEmployee(data);
+      if (employee) {
+        createdEmployees.push(employee);
+      }
+    }
 
-      return employee;
-    });
+    return createdEmployees;
+  }, [createEmployee]);
 
-    // Bulk update storage
-    const currentEmployees = storage.getEmployees();
-    storage.updateEmployees([...currentEmployees, ...newEmployees]);
-    setEmployees(prev => [...prev, ...newEmployees]);
-
-    return newEmployees;
-  }, [addHistoryEntry]);
-
-  // Filter employees
+  // Filter employees (client-side filtering)
   const filterEmployees = useCallback((filters: EmployeeFilters) => {
     let filtered = [...employees];
 
@@ -171,5 +166,6 @@ export function useEmployees() {
     deleteEmployee,
     getEmployee,
     filterEmployees,
+    refreshEmployees: loadEmployees, // Add refresh method
   };
 }

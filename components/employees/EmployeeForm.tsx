@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Employee } from '@/lib/types';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { useCustomAttributes } from '@/hooks/useCustomAttributes';
 import { useCoreAttributes } from '@/hooks/useCoreAttributes';
+import { useEmployees } from '@/hooks/useEmployees';
 
 interface EmployeeFormProps {
   employee?: Employee;
@@ -17,6 +18,18 @@ interface EmployeeFormProps {
 export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps) {
   const { attributes } = useCustomAttributes();
   const { attributes: coreAttributesConfig } = useCoreAttributes();
+  const { employees } = useEmployees();
+
+  // Get list of active employees for manager dropdown
+  const managerOptions = useMemo(() => {
+    return employees
+      .filter(emp => emp.status === 'active' && emp.id !== employee?.id) // Exclude current employee
+      .map(emp => ({
+        value: emp.email,
+        label: `${emp.firstName} ${emp.lastName} (${emp.email})`
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [employees, employee?.id]);
   const [formData, setFormData] = useState({
     type: employee?.type || 'employee',
     firstName: employee?.firstName || '',
@@ -97,6 +110,49 @@ export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps
     // Special handling for endDate - only show for contractors
     if (fieldName === 'endDate' && formData.type !== 'contractor') {
       return null;
+    }
+
+    // Special handling for manager - use dropdown of active employees or text input
+    if (fieldName === 'manager') {
+      // If no employees exist yet, show text input
+      if (managerOptions.length === 0) {
+        return (
+          <div key={fieldName}>
+            <Input
+              label={config.displayName}
+              type="email"
+              value={value as string}
+              onChange={(e) => handleChange(fieldName, e.target.value)}
+              error={error}
+              required={config.required}
+              placeholder="manager@example.com"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              No active employees found. Enter manager&apos;s email manually.
+            </p>
+          </div>
+        );
+      }
+
+      // Otherwise show dropdown
+      return (
+        <div key={fieldName}>
+          <Select
+            label={config.displayName}
+            value={value as string}
+            onChange={(e) => handleChange(fieldName, e.target.value)}
+            options={[
+              { value: '', label: '-- Select Manager --' },
+              ...managerOptions
+            ]}
+            error={error}
+            required={config.required}
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Select from {managerOptions.length} active employee{managerOptions.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+      );
     }
 
     if (config.dataType === 'boolean') {

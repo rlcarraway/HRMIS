@@ -2,19 +2,36 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, Settings, Building2 } from 'lucide-react';
+import { Home, Users, Settings, Building2, LogOut, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLogo } from '@/hooks/useLogo';
+import { useSession, signIn, signOut } from 'next-auth/react';
+import { Button } from '@/components/ui/Button';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: Home },
-  { href: '/employees', label: 'Employees', icon: Users },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/', label: 'Dashboard', icon: Home, requiresAuth: false },
+  { href: '/employees', label: 'Manage Employees', icon: Users, requiresAuth: true },
+  { href: '/settings', label: 'Settings', icon: Settings, requiresAuth: true, adminOnly: true },
 ];
 
 export function Navigation() {
   const pathname = usePathname();
   const { logo } = useLogo();
+  const { data: session, status } = useSession();
+  const isLoading = status === 'loading';
+
+  const canAccessItem = (item: typeof navItems[0]) => {
+    // If item is admin-only, check if user is an admin
+    if (item.adminOnly) {
+      return (session?.user as any)?.role === 'admin';
+    }
+    // If item requires auth, check if user is logged in
+    if (item.requiresAuth) {
+      return !!session;
+    }
+    // Public items are accessible to everyone
+    return true;
+  };
 
   return (
     <nav className="bg-white border-b border-gray-200">
@@ -36,7 +53,7 @@ export function Navigation() {
               <span className="text-xl font-bold text-primary">HRMIS</span>
             </Link>
             <div className="ml-10 flex items-center space-x-4">
-              {navItems.map(item => {
+              {navItems.filter(canAccessItem).map(item => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
 
@@ -57,6 +74,38 @@ export function Navigation() {
                 );
               })}
             </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {!isLoading && (
+              <>
+                {session ? (
+                  <div className="flex items-center gap-3">
+                    <Link href="/profile" className="text-sm hover:bg-gray-100 rounded-lg p-2 transition-colors cursor-pointer">
+                      <p className="font-medium text-gray-900">{session.user?.name}</p>
+                      <p className="text-gray-500 capitalize">{(session.user as any)?.role || 'viewer'}</p>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      onClick={() => signOut({ callbackUrl: '/' })}
+                      className="flex items-center gap-2"
+                    >
+                      <LogOut size={18} />
+                      Sign Out
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="primary"
+                    onClick={() => signIn()}
+                    className="flex items-center gap-2"
+                  >
+                    <LogIn size={18} />
+                    Sign In
+                  </Button>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

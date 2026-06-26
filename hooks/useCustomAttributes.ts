@@ -2,52 +2,88 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { CustomAttribute } from '@/lib/types';
-import { storage } from '@/lib/storage';
-import { generateId } from '@/lib/utils';
 
 export function useCustomAttributes() {
   const [attributes, setAttributes] = useState<CustomAttribute[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load attributes from storage
+  // Load attributes from API
   useEffect(() => {
-    const loadAttributes = () => {
-      const stored = storage.getCustomAttributes();
-      setAttributes(stored);
-      setLoading(false);
+    const loadAttributes = async () => {
+      try {
+        const response = await fetch('/api/custom-attributes');
+        const result = await response.json();
+        if (result.success) {
+          setAttributes(result.data || []);
+        }
+      } catch (error) {
+        console.error('Error loading custom attributes:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     loadAttributes();
   }, []);
 
   // Create new attribute
-  const createAttribute = useCallback((attributeData: Omit<CustomAttribute, 'id'>) => {
-    const newAttribute: CustomAttribute = {
-      ...attributeData,
-      id: generateId(),
-    };
+  const createAttribute = useCallback(async (attributeData: Omit<CustomAttribute, 'id'>) => {
+    try {
+      const response = await fetch('/api/custom-attributes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(attributeData),
+      });
 
-    storage.addCustomAttribute(newAttribute);
-    setAttributes(prev => [...prev, newAttribute]);
-
-    return newAttribute;
+      const result = await response.json();
+      if (result.success && result.data) {
+        setAttributes(prev => [...prev, result.data]);
+        return result.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error creating custom attribute:', error);
+      return null;
+    }
   }, []);
 
   // Update attribute
-  const updateAttribute = useCallback((id: string, updates: Partial<CustomAttribute>) => {
-    const updatedAttribute = storage.updateCustomAttribute(id, updates);
-    if (updatedAttribute) {
-      setAttributes(prev => prev.map(attr => attr.id === id ? updatedAttribute : attr));
+  const updateAttribute = useCallback(async (id: string, updates: Partial<CustomAttribute>) => {
+    try {
+      const response = await fetch(`/api/custom-attributes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        setAttributes(prev => prev.map(attr => attr.id === id ? result.data : attr));
+        return result.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error updating custom attribute:', error);
+      return null;
     }
-    return updatedAttribute;
   }, []);
 
   // Delete attribute
-  const deleteAttribute = useCallback((id: string) => {
-    const success = storage.deleteCustomAttribute(id);
-    if (success) {
-      setAttributes(prev => prev.filter(attr => attr.id !== id));
+  const deleteAttribute = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(`/api/custom-attributes/${id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setAttributes(prev => prev.filter(attr => attr.id !== id));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error deleting custom attribute:', error);
+      return false;
     }
-    return success;
   }, []);
 
   // Get single attribute

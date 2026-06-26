@@ -34,3 +34,6 @@ next-env.d.ts
 
 # exports
 /exports/*.csv
+
+# server-side data storage
+/data

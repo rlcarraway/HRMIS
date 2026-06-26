@@ -496,3 +496,56 @@ For issues or questions, refer to:
 ---
 Built with Next.js 14, TypeScript, and Tailwind CSS
 Last updated: 2026-05-29
+
+## Okta Settings Management
+
+### Persistent Configuration
+Okta settings can be configured dynamically through the admin UI and persist across server restarts:
+
+- Settings are stored in `/data/okta-settings.json` (gitignored)
+- Environment variables (.env.local) take precedence over persisted settings
+- Settings are automatically loaded on server startup
+
+### Current Settings Display
+When an admin navigates to Settings > Okta Integration tab, the system automatically loads and displays the current Okta configuration:
+
+- **Client ID**: Displayed in full
+- **Client Secret**: Masked for security (shows only last 4 characters as `••••••••••••abc123`)
+- **Issuer URL**: Displayed in full
+
+The loading is triggered automatically when the Okta tab becomes active, ensuring admins always see the current configuration without needing to manually enter it each time.
+
+### Saving Settings and Auto-Restart
+When an admin saves Okta settings through the UI:
+
+1. Settings are saved to persistent file storage
+2. Server automatically restarts to apply OAuth configuration changes
+3. Client page polls for server availability
+4. Page auto-reloads once server is back online
+5. New settings take effect immediately
+
+This ensures that OAuth flow changes (like updated Client ID or Issuer) are immediately active without requiring manual intervention.
+
+### API Endpoints
+- `GET /api/okta-settings` - Fetches current Okta configuration (admin only)
+  - Returns: `clientId`, masked `clientSecret`, `issuer`, and `isConfigured` flag
+  - Authorization: Admin role required
+
+- `PUT /api/okta-settings` - Updates Okta configuration and triggers restart (admin only)
+  - Body: `{ clientId, clientSecret, issuer }`
+  - Automatically restarts server after 500ms
+  - Authorization: Admin role required
+
+### Security Considerations
+- Client secret is never exposed in full through the API
+- Only the last 4 characters are shown to help admins verify which credential is configured
+- Admins must enter the full client secret again if they want to update it
+- Settings file is excluded from version control (.gitignore)
+
+### Documentation
+See `OKTA_PERSISTENCE.md` for detailed implementation documentation, including:
+- Architecture and file structure
+- Storage hierarchy and initialization
+- Deployment configurations (Docker, Kubernetes)
+- Troubleshooting guide
+

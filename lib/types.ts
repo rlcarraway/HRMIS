@@ -1,7 +1,7 @@
 // Core employee/contractor record
 export interface Employee {
   id: string;
-  type: 'employee' | 'contractor';
+  type: string; // Type is configurable (e.g., 'employee', 'contractor', or custom types)
   firstName: string;
   lastName: string;
   email: string;
@@ -53,7 +53,7 @@ export interface ChangeHistory {
 export interface EmployeeFilters {
   search?: string;
   status?: Employee['status'] | 'all';
-  type?: Employee['type'] | 'all';
+  type?: string | 'all'; // Can be any custom type value
   department?: string;
   fromDate?: string;
   toDate?: string;
@@ -68,6 +68,7 @@ export interface EmployeeStats {
   employees: number;
   contractors: number;
   byDepartment: Record<string, number>;
+  byType: Record<string, number>; // Count of each type (including custom types)
 }
 
 // OAuth configuration for webhook authentication

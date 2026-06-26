@@ -1,17 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { useEmployees } from '@/hooks/useEmployees';
 import { Employee } from '@/lib/types';
 import { EmployeeForm } from '@/components/employees/EmployeeForm';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, History } from 'lucide-react';
 import Link from 'next/link';
+import { canManageEmployees } from '@/lib/authTypes';
 
 export default function EmployeeDetailPage({ params }: { params: { id: string } }) {
+  const { data: session } = useSession();
   const { getEmployee, updateEmployee } = useEmployees();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  const isAdmin = canManageEmployees(session as any);
 
   useEffect(() => {
     const emp = getEmployee(params.id);
@@ -51,7 +56,7 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
               View History
             </Button>
           </Link>
-          {!isEditing && (
+          {!isEditing && isAdmin && (
             <Button variant="primary" onClick={() => setIsEditing(true)}>
               Edit Employee
             </Button>

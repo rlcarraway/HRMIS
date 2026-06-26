@@ -40,9 +40,6 @@ export default function DashboardPage() {
           <Link href="/employees">
             <Button variant="secondary">View All Employees</Button>
           </Link>
-          <Link href="/settings">
-            <Button variant="orange">Manage Custom Attributes</Button>
-          </Link>
         </div>
       </div>
 

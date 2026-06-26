@@ -33,6 +33,7 @@ export function calculateStats(employees: Employee[]): EmployeeStats {
     employees: 0,
     contractors: 0,
     byDepartment: {},
+    byType: {},
   };
 
   employees.forEach(emp => {
@@ -41,9 +42,14 @@ export function calculateStats(employees: Employee[]): EmployeeStats {
     else if (emp.status === 'inactive') stats.inactive++;
     else if (emp.status === 'terminated') stats.terminated++;
 
-    // Count by type
+    // Count by type (legacy fields for backward compatibility)
     if (emp.type === 'employee') stats.employees++;
     else if (emp.type === 'contractor') stats.contractors++;
+
+    // Count by type (all types including custom)
+    if (emp.type) {
+      stats.byType[emp.type] = (stats.byType[emp.type] || 0) + 1;
+    }
 
     // Count by department
     if (emp.department) {
