@@ -106,6 +106,46 @@ These local accounts work without any Okta configuration:
   - Password: `password`
   - Access: Read-only access
 
+## Important: Data Persistence in Vercel
+
+**⚠️ WARNING:** This application uses file-based storage which is **EPHEMERAL** in Vercel's serverless environment.
+
+### What This Means
+
+- Data is stored in `/tmp` directory on Vercel
+- `/tmp` is cleared between deployments and periodically
+- **All data (employees, settings, etc.) will be lost** when:
+  - You redeploy the application
+  - Vercel scales down/up serverless functions
+  - The Lambda function is recycled (happens periodically)
+
+### Demo/Testing Only
+
+This Vercel deployment is suitable for:
+- ✅ Testing authentication flows
+- ✅ Demonstrating UI/UX
+- ✅ Evaluating features
+- ❌ **NOT for production use**
+- ❌ **NOT for storing real data**
+
+### For Production Use
+
+To use this application in production, you need to replace file-based storage with a database:
+
+1. **PostgreSQL** (Recommended)
+   - Use Vercel Postgres
+   - Migrate `lib/serverStorage.ts` to use database queries
+   - Store all data in tables
+
+2. **MongoDB**
+   - Use MongoDB Atlas
+   - Replace JSON file operations with MongoDB operations
+
+3. **Other Options**
+   - Vercel KV (Redis) for simple key-value storage
+   - Supabase with PostgreSQL
+   - PlanetScale with MySQL
+
 ## Security Notes
 
 - Always use strong, randomly generated values for `NEXTAUTH_SECRET` in production

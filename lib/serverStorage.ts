@@ -2,7 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import { Employee, CustomAttribute, ChangeHistory, ExportSchedule, ExportMetadata, ScheduledExportLog, CoreAttributeConfig } from './types';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+// In Vercel/serverless, use /tmp which is writable but ephemeral
+// In local dev, use ./data directory
+const isVercel = process.env.VERCEL === '1';
+const DATA_DIR = isVercel ? '/tmp/data' : path.join(process.cwd(), 'data');
 const DATA_FILES = {
   EMPLOYEES: path.join(DATA_DIR, 'employees.json'),
   CUSTOM_ATTRIBUTES: path.join(DATA_DIR, 'custom_attributes.json'),
@@ -35,8 +38,14 @@ class ServerStorage {
   }
 
   private ensureDataDirectory(): void {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+    } catch (error) {
+      console.error('Error creating data directory:', error);
+      // In serverless environments, this might fail but we continue
+      // Data will be stored in memory or retrieved from environment variables
     }
   }
 
