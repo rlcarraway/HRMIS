@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { Suspense, useState, useRef, useEffect, useCallback } from 'react';
 import { useCustomAttributes } from '@/hooks/useCustomAttributes';
 import { useCoreAttributes } from '@/hooks/useCoreAttributes';
 import { useLogo } from '@/hooks/useLogo';
@@ -27,7 +27,7 @@ interface TestResult {
   duration: number;
 }
 
-export default function SettingsPage() {
+function SettingsContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<SettingsTab>('system');
   const [oktaSettings, setOktaSettings] = useState({
@@ -2558,4 +2558,16 @@ Authorization: Bearer <access_token>`}</pre>
     </Modal>
   </div>
 );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
+  );
 }

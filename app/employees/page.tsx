@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { Suspense, useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useEmployees } from '@/hooks/useEmployees';
@@ -23,7 +23,7 @@ import { ColumnCustomizer } from '@/components/employees/ColumnCustomizer';
 import { canManageEmployees } from '@/lib/authTypes';
 import { FIRST_NAMES, LAST_NAMES, DEPARTMENTS, TITLES_BY_DEPARTMENT, COMMON_MANAGERS, getRandomItem, getRandomDate, getFutureDate } from '@/lib/testDataNames';
 
-export default function EmployeesPage() {
+function EmployeesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
@@ -790,5 +790,17 @@ export default function EmployeesPage() {
       </Modal>
 
     </div>
+  );
+}
+
+export default function EmployeesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    }>
+      <EmployeesContent />
+    </Suspense>
   );
 }
