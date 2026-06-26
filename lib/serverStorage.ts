@@ -633,16 +633,21 @@ class ServerStorage {
     return {
       id: data.id,
       name: data.name,
-      description: data.description,
-      scheduleType: data.schedule_type,
-      time: data.time,
+      frequency: data.frequency,
+      scheduledTime: data.scheduled_time,
+      scheduledDate: data.scheduled_date,
       dayOfWeek: data.day_of_week,
       dayOfMonth: data.day_of_month,
-      format: data.format,
-      includeFields: data.include_fields,
+      intervalValue: data.interval_value,
+      filters: data.filters || {},
+      timezone: data.timezone || 'America/New_York',
       enabled: data.enabled,
-      destination: data.destination,
-      lastRunAt: data.last_run_at,
+      exportType: data.export_type || 'full',
+      webhookUrl: data.webhook_url,
+      webhookOAuth: data.webhook_oauth,
+      lastExecuted: data.last_executed,
+      lastExportedRecordIds: data.last_exported_record_ids,
+      nextScheduled: data.next_scheduled,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -652,16 +657,21 @@ class ServerStorage {
     const mapped: any = {};
     if (schedule.id !== undefined) mapped.id = schedule.id;
     if (schedule.name !== undefined) mapped.name = schedule.name;
-    if (schedule.description !== undefined) mapped.description = schedule.description;
-    if (schedule.scheduleType !== undefined) mapped.schedule_type = schedule.scheduleType;
-    if (schedule.time !== undefined) mapped.time = schedule.time;
+    if (schedule.frequency !== undefined) mapped.frequency = schedule.frequency;
+    if (schedule.scheduledTime !== undefined) mapped.scheduled_time = schedule.scheduledTime;
+    if (schedule.scheduledDate !== undefined) mapped.scheduled_date = schedule.scheduledDate;
     if (schedule.dayOfWeek !== undefined) mapped.day_of_week = schedule.dayOfWeek;
     if (schedule.dayOfMonth !== undefined) mapped.day_of_month = schedule.dayOfMonth;
-    if (schedule.format !== undefined) mapped.format = schedule.format;
-    if (schedule.includeFields !== undefined) mapped.include_fields = schedule.includeFields;
+    if (schedule.intervalValue !== undefined) mapped.interval_value = schedule.intervalValue;
+    if (schedule.filters !== undefined) mapped.filters = schedule.filters;
+    if (schedule.timezone !== undefined) mapped.timezone = schedule.timezone;
     if (schedule.enabled !== undefined) mapped.enabled = schedule.enabled;
-    if (schedule.destination !== undefined) mapped.destination = schedule.destination;
-    if (schedule.lastRunAt !== undefined) mapped.last_run_at = schedule.lastRunAt;
+    if (schedule.exportType !== undefined) mapped.export_type = schedule.exportType;
+    if (schedule.webhookUrl !== undefined) mapped.webhook_url = schedule.webhookUrl;
+    if (schedule.webhookOAuth !== undefined) mapped.webhook_oauth = schedule.webhookOAuth;
+    if (schedule.lastExecuted !== undefined) mapped.last_executed = schedule.lastExecuted;
+    if (schedule.lastExportedRecordIds !== undefined) mapped.last_exported_record_ids = schedule.lastExportedRecordIds;
+    if (schedule.nextScheduled !== undefined) mapped.next_scheduled = schedule.nextScheduled;
     if (schedule.createdAt !== undefined) mapped.created_at = schedule.createdAt;
     if (schedule.updatedAt !== undefined) mapped.updated_at = schedule.updatedAt;
     return mapped;
@@ -671,11 +681,14 @@ class ServerStorage {
     return {
       id: data.id,
       scheduleId: data.schedule_id,
-      timestamp: data.timestamp,
-      status: data.status,
-      recordsExported: data.records_exported,
-      errorMessage: data.error_message,
-      destination: data.destination,
+      executedAt: data.executed_at,
+      success: data.success,
+      employeeCount: data.employee_count,
+      filename: data.filename,
+      exportType: data.export_type || 'full',
+      webhookCalled: data.webhook_called,
+      webhookSuccess: data.webhook_success,
+      error: data.error,
     };
   }
 
@@ -683,11 +696,14 @@ class ServerStorage {
     return {
       id: log.id,
       schedule_id: log.scheduleId,
-      timestamp: log.timestamp,
-      status: log.status,
-      records_exported: log.recordsExported,
-      error_message: log.errorMessage,
-      destination: log.destination,
+      executed_at: log.executedAt,
+      success: log.success,
+      employee_count: log.employeeCount,
+      filename: log.filename,
+      export_type: log.exportType,
+      webhook_called: log.webhookCalled,
+      webhook_success: log.webhookSuccess,
+      error: log.error,
     };
   }
 

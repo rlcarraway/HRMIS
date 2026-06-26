@@ -1,12 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Validate required environment variables
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL');
-}
+// Check for required environment variables
+// Use placeholder values during build if not set
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-key';
 
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing env.SUPABASE_SERVICE_ROLE_KEY');
+const isConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+if (!isConfigured && process.env.NODE_ENV !== 'production') {
+  console.warn('⚠️  Supabase not configured - using placeholder client for build');
+  console.warn('   Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to use Supabase');
 }
 
 /**
@@ -15,8 +21,8 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
  * Has full access to all tables and operations
  */
 export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  supabaseUrl,
+  supabaseServiceKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -26,13 +32,18 @@ export const supabaseAdmin = createClient(
 );
 
 /**
+ * Check if Supabase is properly configured
+ */
+export const isSupabaseConfigured = isConfigured;
+
+/**
  * Client-side Supabase client with anon key
  * Respects Row Level Security (RLS) policies
  * Use for future client-side features if needed
  */
 export const supabaseClient = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ? createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseUrl,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     )
   : null;
