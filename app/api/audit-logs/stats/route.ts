@@ -18,7 +18,7 @@ export async function GET() {
       );
     }
 
-    const stats = getAuditLogStats();
+    const stats = await getAuditLogStats();
 
     return NextResponse.json({
       success: true,

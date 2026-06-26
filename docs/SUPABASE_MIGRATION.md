@@ -38,7 +38,7 @@ After project creation, go to Project Settings → Database:
 
 ### 2.1 Create Tables
 
-Go to SQL Editor in Supabase and run this schema:
+Go to SQL Editor in Supabase and run this complete schema (also available in `SUPABASE_COMPLETE_SCHEMA.sql`):
 
 ```sql
 -- Enable UUID extension

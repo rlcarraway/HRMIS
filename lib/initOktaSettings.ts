@@ -8,9 +8,9 @@ import { getOktaSettings } from './serverOktaSettings';
  *
  * Call this at server startup or in API routes before using Okta configuration
  */
-export function initializeOktaSettings(): void {
+export async function initializeOktaSettings(): Promise<void> {
   try {
-    const persistedSettings = getOktaSettings();
+    const persistedSettings = await getOktaSettings();
 
     // Only update env vars if persisted settings exist and env vars are not already set
     // This allows .env.local to take precedence over persisted settings
@@ -31,5 +31,7 @@ export function initializeOktaSettings(): void {
 
 // Auto-initialize on module load (server-side only)
 if (typeof window === 'undefined') {
-  initializeOktaSettings();
+  initializeOktaSettings().catch(error => {
+    console.error('Error auto-initializing Okta settings:', error);
+  });
 }

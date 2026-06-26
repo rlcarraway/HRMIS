@@ -39,7 +39,7 @@ export async function PUT(
     }
 
     // Log the role change
-    logUserAction(
+    await logUserAction(
       'user.role_change',
       `Changed role for user ${updatedUser.email} from ${oldUser?.role} to ${updatedUser.role}`,
       {
@@ -101,7 +101,7 @@ export async function DELETE(
     }
 
     // Log the user deletion
-    logUserAction(
+    await logUserAction(
       'user.delete',
       `Deleted user: ${userToDelete?.email || params.id}`,
       {

@@ -19,7 +19,7 @@ export async function GET() {
       );
     }
 
-    const settings = getOutboundApiSettings();
+    const settings = await getOutboundApiSettings();
 
     return NextResponse.json({
       success: true,
@@ -80,10 +80,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Get old settings for audit log
-    const oldSettings = getOutboundApiSettings();
+    const oldSettings = await getOutboundApiSettings();
 
     // Update settings
-    const updatedSettings = updateOutboundApiSettings({
+    const updatedSettings = await updateOutboundApiSettings({
       enabled,
       url: url.trim(),
       headers: headers.map(h => ({
@@ -98,7 +98,7 @@ export async function PUT(request: NextRequest) {
     });
 
     // Log the configuration change
-    logConfigChange(
+    await logConfigChange(
       'config.outbound_api.update',
       'Updated outbound API configuration',
       {

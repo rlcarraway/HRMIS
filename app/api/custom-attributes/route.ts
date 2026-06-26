@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     await serverStorage.addCustomAttribute(newAttribute);
 
     // Log the attribute creation
-    logConfigChange(
+    await logConfigChange(
       'config.attribute.create',
       `Created custom attribute: ${newAttribute.name}`,
       {

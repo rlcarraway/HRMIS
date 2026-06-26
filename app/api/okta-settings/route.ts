@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const settings = getOktaSettings();
-    const maskedSecret = getMaskedClientSecret();
+    const settings = await getOktaSettings();
+    const maskedSecret = await getMaskedClientSecret();
 
     return NextResponse.json({
       success: true,
@@ -60,10 +60,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Get old settings for logging
-    const oldSettings = getOktaSettings();
+    const oldSettings = await getOktaSettings();
 
     // Update settings in file
-    const saved = updateOktaSettings({
+    const saved = await updateOktaSettings({
       clientId,
       clientSecret,
       issuer,
@@ -77,7 +77,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Log the configuration change
-    logConfigChange(
+    await logConfigChange(
       'config.okta.update',
       'Updated Okta configuration',
       {

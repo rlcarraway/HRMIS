@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     registerSchedule(scheduleData);
 
     // Log the schedule creation
-    logConfigChange(
+    await logConfigChange(
       'config.export_schedule.create',
       `Created export schedule: ${scheduleData.name}`,
       {

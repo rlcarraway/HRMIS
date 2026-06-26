@@ -41,7 +41,7 @@ const providers: any[] = [
       const user = validateLocalUser(credentials.email, credentials.password);
       if (!user) {
         // Log failed login attempt
-        logUserAction(
+        await logUserAction(
           'user.login',
           `Failed login attempt for ${credentials.email}`,
           {
@@ -58,7 +58,7 @@ const providers: any[] = [
       }
 
       // Log successful login
-      logUserAction(
+      await logUserAction(
         'user.login',
         `User logged in: ${user.email}`,
         {
@@ -100,9 +100,9 @@ if (oktaConfigured) {
     clientSecret: process.env.OKTA_CLIENT_SECRET || '',
     issuer: process.env.OKTA_ISSUER,
     checks: ['pkce', 'state'], // Enable PKCE and state parameter checks
-    profile(profile: any) {
+    async profile(profile: any) {
       // Save or update federated user in persistent storage
-      const federatedUser = createOrUpdateFederatedUser({
+      const federatedUser = await createOrUpdateFederatedUser({
         providerId: profile.sub,
         email: profile.email,
         name: profile.name || profile.email,
@@ -110,7 +110,7 @@ if (oktaConfigured) {
       });
 
       // Log successful Okta login
-      logUserAction(
+      await logUserAction(
         'user.login',
         `User logged in via Okta: ${federatedUser.email}`,
         {
@@ -150,7 +150,7 @@ export const authOptions: NextAuthOptions = {
 
         // For federated users, ensure we have the latest role from storage
         if (account.provider === 'okta' && profile) {
-          const federatedUser = getFederatedUserByProviderId((profile as any).sub);
+          const federatedUser = await getFederatedUserByProviderId((profile as any).sub);
           if (federatedUser) {
             token.role = federatedUser.role;
           }

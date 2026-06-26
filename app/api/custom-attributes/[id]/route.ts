@@ -34,7 +34,7 @@ export async function PUT(
     }
 
     // Log the attribute update
-    logConfigChange(
+    await logConfigChange(
       'config.attribute.update',
       `Updated custom attribute: ${updatedAttribute.name}`,
       {
@@ -94,7 +94,7 @@ export async function DELETE(
     }
 
     // Log the attribute deletion
-    logConfigChange(
+    await logConfigChange(
       'config.attribute.delete',
       `Deleted custom attribute: ${attribute?.name || params.id}`,
       {

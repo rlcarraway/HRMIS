@@ -106,7 +106,7 @@ export async function PUT(
     }
 
     // Log the schedule update
-    logConfigChange(
+    await logConfigChange(
       'config.export_schedule.update',
       `Updated export schedule: ${updatedSchedule.name}`,
       {
@@ -166,7 +166,7 @@ export async function DELETE(
     unregisterSchedule(params.id);
 
     // Log the schedule deletion
-    logConfigChange(
+    await logConfigChange(
       'config.export_schedule.delete',
       `Deleted export schedule: ${schedule?.name || params.id}`,
       {

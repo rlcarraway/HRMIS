@@ -18,7 +18,7 @@ export async function GET(
       );
     }
 
-    const user = getFederatedUser(params.id);
+    const user = await getFederatedUser(params.id);
 
     if (!user) {
       return NextResponse.json(
@@ -64,7 +64,7 @@ export async function PATCH(
       );
     }
 
-    const updatedUser = updateFederatedUserRole(params.id, role);
+    const updatedUser = await updateFederatedUserRole(params.id, role);
 
     if (!updatedUser) {
       return NextResponse.json(
@@ -101,7 +101,7 @@ export async function DELETE(
       );
     }
 
-    const success = deleteFederatedUser(params.id);
+    const success = await deleteFederatedUser(params.id);
 
     if (!success) {
       return NextResponse.json(

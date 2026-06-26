@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Log the employee creation
-    logUserAction(
+    await logUserAction(
       'employee.create',
       `Created employee: ${newEmployee.firstName} ${newEmployee.lastName} (${newEmployee.email})`,
       {
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the API response
-    logApiCall(
+    await logApiCall(
       'api.inbound.success',
       `POST /api/employees - Created employee ${newEmployee.email}`,
       {

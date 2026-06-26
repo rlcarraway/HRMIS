@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const users = getFederatedUsers();
+    const users = await getFederatedUsers();
 
     return NextResponse.json({
       success: true,

@@ -47,7 +47,7 @@ export async function PUT(request: NextRequest) {
     await serverStorage.setLogo(logo);
 
     // Log the logo upload
-    logConfigChange(
+    await logConfigChange(
       'config.logo.upload',
       'Uploaded company logo',
       {
@@ -90,7 +90,7 @@ export async function DELETE() {
     await serverStorage.removeLogo();
 
     // Log the logo removal
-    logConfigChange(
+    await logConfigChange(
       'config.logo.remove',
       'Removed company logo',
       {

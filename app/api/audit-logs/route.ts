@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0,
     };
 
-    const result = getAuditLogs(filter);
+    const result = await getAuditLogs(filter);
 
     return NextResponse.json({
       success: true,

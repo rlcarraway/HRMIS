@@ -3,7 +3,7 @@ import { getOktaSettings } from '@/lib/serverOktaSettings';
 
 export async function GET() {
   try {
-    const settings = getOktaSettings();
+    const settings = await getOktaSettings();
 
     // Check if all required Okta settings are present
     const configured = !!(

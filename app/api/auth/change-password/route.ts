@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     // In production, use: await bcrypt.compare(currentPassword, user.password)
     if (user.password !== currentPassword) {
       // Log failed password change attempt
-      logUserAction(
+      await logUserAction(
         'user.update',
         `Failed password change attempt for ${user.email}: incorrect current password`,
         {
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log successful password change
-    logUserAction(
+    await logUserAction(
       'user.update',
       `Password changed successfully for ${updatedUser.email}`,
       {

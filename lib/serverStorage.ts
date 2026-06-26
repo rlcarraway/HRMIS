@@ -731,6 +731,443 @@ class ServerStorage {
       display_order: displayOrder,
     };
   }
+
+  // Okta Settings operations
+  async getOktaSettings(): Promise<{ clientId: string; clientSecret: string; issuer: string } | null> {
+    const { data, error } = await supabaseAdmin
+      .from('okta_settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+
+    if (error) {
+      console.error('Error fetching Okta settings:', error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    return {
+      clientId: data.client_id,
+      clientSecret: data.client_secret,
+      issuer: data.issuer,
+    };
+  }
+
+  async setOktaSettings(settings: { clientId: string; clientSecret: string; issuer: string }): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('okta_settings')
+      .upsert({
+        id: 1,
+        client_id: settings.clientId,
+        client_secret: settings.clientSecret,
+        issuer: settings.issuer,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error('Error setting Okta settings:', error);
+      throw error;
+    }
+  }
+
+  // Outbound API Settings operations
+  async getOutboundApiSettings(): Promise<{
+    enabled: boolean;
+    url: string;
+    headers: Array<{ key: string; value: string }>;
+    operations: { create: boolean; update: boolean; delete: boolean };
+  }> {
+    const { data, error } = await supabaseAdmin
+      .from('outbound_api_settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+
+    if (error) {
+      console.error('Error fetching outbound API settings:', error);
+      return {
+        enabled: false,
+        url: '',
+        headers: [],
+        operations: { create: false, update: false, delete: false },
+      };
+    }
+
+    return {
+      enabled: data.enabled,
+      url: data.url,
+      headers: data.headers || [],
+      operations: data.operations || { create: false, update: false, delete: false },
+    };
+  }
+
+  async setOutboundApiSettings(settings: {
+    enabled: boolean;
+    url: string;
+    headers: Array<{ key: string; value: string }>;
+    operations: { create: boolean; update: boolean; delete: boolean };
+  }): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('outbound_api_settings')
+      .upsert({
+        id: 1,
+        enabled: settings.enabled,
+        url: settings.url,
+        headers: settings.headers,
+        operations: settings.operations,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error('Error setting outbound API settings:', error);
+      throw error;
+    }
+  }
+
+  // Federated Users operations
+  async getFederatedUsers(): Promise<Array<{
+    id: string;
+    email: string;
+    name: string;
+    role: 'admin' | 'viewer';
+    provider: string;
+    providerId: string;
+    createdAt: string;
+    updatedAt: string;
+    lastLoginAt: string;
+  }>> {
+    const { data, error } = await supabaseAdmin
+      .from('federated_users')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching federated users:', error);
+      return [];
+    }
+
+    return (data || []).map(user => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      provider: user.provider,
+      providerId: user.provider_id,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      lastLoginAt: user.last_login_at,
+    }));
+  }
+
+  async getFederatedUserByProviderId(providerId: string): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    role: 'admin' | 'viewer';
+    provider: string;
+    providerId: string;
+    createdAt: string;
+    updatedAt: string;
+    lastLoginAt: string;
+  } | null> {
+    const { data, error } = await supabaseAdmin
+      .from('federated_users')
+      .select('*')
+      .eq('provider_id', providerId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching federated user:', error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      role: data.role,
+      provider: data.provider,
+      providerId: data.provider_id,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      lastLoginAt: data.last_login_at,
+    };
+  }
+
+  async upsertFederatedUser(user: {
+    providerId: string;
+    email: string;
+    name: string;
+    provider: string;
+    role?: 'admin' | 'viewer';
+  }): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    role: 'admin' | 'viewer';
+    provider: string;
+    providerId: string;
+    createdAt: string;
+    updatedAt: string;
+    lastLoginAt: string;
+  }> {
+    // Check if user exists
+    const existing = await this.getFederatedUserByProviderId(user.providerId);
+
+    if (existing) {
+      // Update existing user
+      const { data, error } = await supabaseAdmin
+        .from('federated_users')
+        .update({
+          email: user.email,
+          name: user.name,
+          role: user.role || existing.role,
+          updated_at: new Date().toISOString(),
+          last_login_at: new Date().toISOString(),
+        })
+        .eq('provider_id', user.providerId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating federated user:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        provider: data.provider,
+        providerId: data.provider_id,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        lastLoginAt: data.last_login_at,
+      };
+    } else {
+      // Create new user
+      const { data, error } = await supabaseAdmin
+        .from('federated_users')
+        .insert({
+          email: user.email,
+          name: user.name,
+          role: user.role || 'viewer',
+          provider: user.provider,
+          provider_id: user.providerId,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating federated user:', error);
+        throw error;
+      }
+
+      return {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        provider: data.provider,
+        providerId: data.provider_id,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        lastLoginAt: data.last_login_at,
+      };
+    }
+  }
+
+  async updateFederatedUserRole(id: string, role: 'admin' | 'viewer'): Promise<boolean> {
+    const { error } = await supabaseAdmin
+      .from('federated_users')
+      .update({
+        role,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating federated user role:', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  async deleteFederatedUser(id: string): Promise<boolean> {
+    const { error } = await supabaseAdmin
+      .from('federated_users')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting federated user:', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  // Audit Logs operations
+  async getAuditLogs(filters?: {
+    search?: string;
+    action?: string;
+    level?: string;
+    userId?: string;
+    fromDate?: string;
+    toDate?: string;
+    success?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ logs: Array<{
+    id: string;
+    timestamp: string;
+    action: string;
+    level: string;
+    userId?: string;
+    userName?: string;
+    userEmail?: string;
+    description: string;
+    details?: any;
+    ipAddress?: string;
+    userAgent?: string;
+    duration?: number;
+    success: boolean;
+    errorMessage?: string;
+  }>; total: number }> {
+    let query = supabaseAdmin
+      .from('audit_logs')
+      .select('*', { count: 'exact' })
+      .order('timestamp', { ascending: false });
+
+    // Apply filters
+    if (filters?.action) {
+      query = query.eq('action', filters.action);
+    }
+    if (filters?.level) {
+      query = query.eq('level', filters.level);
+    }
+    if (filters?.userId) {
+      query = query.eq('user_id', filters.userId);
+    }
+    if (filters?.fromDate) {
+      query = query.gte('timestamp', filters.fromDate);
+    }
+    if (filters?.toDate) {
+      query = query.lte('timestamp', filters.toDate);
+    }
+    if (filters?.success !== undefined) {
+      query = query.eq('success', filters.success);
+    }
+    if (filters?.search) {
+      query = query.or(`description.ilike.%${filters.search}%,action.ilike.%${filters.search}%,user_email.ilike.%${filters.search}%`);
+    }
+
+    // Apply pagination
+    if (filters?.offset !== undefined) {
+      query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
+    } else if (filters?.limit !== undefined) {
+      query = query.limit(filters.limit);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('Error fetching audit logs:', error);
+      return { logs: [], total: 0 };
+    }
+
+    const logs = (data || []).map(log => ({
+      id: log.id,
+      timestamp: log.timestamp,
+      action: log.action,
+      level: log.level,
+      userId: log.user_id,
+      userName: log.user_name,
+      userEmail: log.user_email,
+      description: log.description,
+      details: log.details,
+      ipAddress: log.ip_address,
+      userAgent: log.user_agent,
+      duration: log.duration,
+      success: log.success,
+      errorMessage: log.error_message,
+    }));
+
+    return { logs, total: count || 0 };
+  }
+
+  async addAuditLog(log: {
+    action: string;
+    level: string;
+    userId?: string;
+    userName?: string;
+    userEmail?: string;
+    description: string;
+    details?: any;
+    ipAddress?: string;
+    userAgent?: string;
+    duration?: number;
+    success: boolean;
+    errorMessage?: string;
+  }): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('audit_logs')
+      .insert({
+        action: log.action,
+        level: log.level,
+        user_id: log.userId,
+        user_name: log.userName,
+        user_email: log.userEmail,
+        description: log.description,
+        details: log.details,
+        ip_address: log.ipAddress,
+        user_agent: log.userAgent,
+        duration: log.duration,
+        success: log.success,
+        error_message: log.errorMessage,
+      });
+
+    if (error) {
+      console.error('Error adding audit log:', error);
+      throw error;
+    }
+  }
+
+  async clearOldAuditLogs(daysToKeep: number): Promise<number> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+
+    const { data: logsToDelete, error: selectError } = await supabaseAdmin
+      .from('audit_logs')
+      .select('id')
+      .lt('timestamp', cutoffDate.toISOString());
+
+    if (selectError) {
+      console.error('Error fetching old audit logs:', selectError);
+      return 0;
+    }
+
+    const deleteCount = logsToDelete?.length || 0;
+
+    if (deleteCount > 0) {
+      const { error: deleteError } = await supabaseAdmin
+        .from('audit_logs')
+        .delete()
+        .lt('timestamp', cutoffDate.toISOString());
+
+      if (deleteError) {
+        console.error('Error deleting old audit logs:', deleteError);
+        return 0;
+      }
+    }
+
+    return deleteCount;
+  }
 }
 
 export const serverStorage = new ServerStorage();

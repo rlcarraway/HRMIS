@@ -109,7 +109,7 @@ export async function PUT(
       });
 
       // Log the employee update
-      logUserAction(
+      await logUserAction(
         'employee.update',
         `Updated employee: ${updatedEmployee.firstName} ${updatedEmployee.lastName} (${updatedEmployee.email})`,
         {
@@ -191,7 +191,7 @@ export async function DELETE(
     });
 
     // Log the employee deletion
-    logUserAction(
+    await logUserAction(
       'employee.delete',
       `Deleted employee: ${employee.firstName} ${employee.lastName} (${employee.email})`,
       {

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       ? `Imported ${count || 0} employee(s)`
       : `Exported ${count || 0} employee(s)`;
 
-    logUserAction(
+    await logUserAction(
       action,
       description,
       {

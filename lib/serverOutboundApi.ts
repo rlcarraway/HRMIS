@@ -1,6 +1,5 @@
-// Server-side outbound API configuration store
-import fs from 'fs';
-import path from 'path';
+// Server-side outbound API configuration stored in Supabase
+import { serverStorage } from './serverStorage';
 import { logApiCall } from './serverAuditLog';
 
 export interface OutboundApiSettings {
@@ -14,71 +13,14 @@ export interface OutboundApiSettings {
   };
 }
 
-// Use /tmp on Vercel (read-only filesystem), ./data locally
-const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
-const SETTINGS_FILE = path.join(DATA_DIR, 'outbound-api-settings.json');
-
-// Ensure data directory exists
-function ensureDataDir() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-  } catch (error) {
-    console.error('Warning: Could not create data directory:', error);
-  }
-}
-
-// Default settings
-const defaultSettings: OutboundApiSettings = {
-  enabled: false,
-  url: '',
-  headers: [
-    { key: 'Content-Type', value: 'application/json' }
-  ],
-  operations: {
-    create: false,
-    update: false,
-    delete: false,
-  },
-};
-
-// Read settings from file
-function readSettingsFile(): OutboundApiSettings {
-  ensureDataDir();
-
-  try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      const data = fs.readFileSync(SETTINGS_FILE, 'utf-8');
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error('Error reading outbound API settings file:', error);
-  }
-
-  return defaultSettings;
-}
-
-// Write settings to file
-function writeSettingsFile(settings: OutboundApiSettings): void {
-  ensureDataDir();
-
-  try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
-  } catch (error) {
-    console.error('Error writing outbound API settings file:', error);
-    throw error;
-  }
-}
-
 // Get current settings
-export function getOutboundApiSettings(): OutboundApiSettings {
-  return readSettingsFile();
+export async function getOutboundApiSettings(): Promise<OutboundApiSettings> {
+  return await serverStorage.getOutboundApiSettings();
 }
 
 // Update settings
-export function updateOutboundApiSettings(settings: OutboundApiSettings): OutboundApiSettings {
-  writeSettingsFile(settings);
+export async function updateOutboundApiSettings(settings: OutboundApiSettings): Promise<OutboundApiSettings> {
+  await serverStorage.setOutboundApiSettings(settings);
   return settings;
 }
 
@@ -87,7 +29,7 @@ export async function sendToOutboundApi(
   operation: 'create' | 'update' | 'delete',
   data: any
 ): Promise<{ success: boolean; error?: string; response?: any }> {
-  const settings = getOutboundApiSettings();
+  const settings = await getOutboundApiSettings();
 
   // Check if outbound API is enabled
   if (!settings.enabled) {
@@ -123,7 +65,7 @@ export async function sendToOutboundApi(
     };
 
     // Log the API call attempt
-    logApiCall(
+    await logApiCall(
       'api.outbound.call',
       `Outbound API call - ${operation} operation for ${data.email || data.id}`,
       {
@@ -156,7 +98,7 @@ export async function sendToOutboundApi(
 
     if (!response.ok) {
       // Log failure
-      logApiCall(
+      await logApiCall(
         'api.outbound.failure',
         `Outbound API failed - ${operation} operation`,
         {
@@ -178,7 +120,7 @@ export async function sendToOutboundApi(
     }
 
     // Log success
-    logApiCall(
+    await logApiCall(
       'api.outbound.success',
       `Outbound API success - ${operation} operation for ${data.email || data.id}`,
       {
@@ -202,7 +144,7 @@ export async function sendToOutboundApi(
     console.error('Error calling outbound API:', error);
 
     // Log error
-    logApiCall(
+    await logApiCall(
       'api.outbound.failure',
       `Outbound API error - ${operation} operation`,
       {
