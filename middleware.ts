@@ -7,13 +7,9 @@ export default withAuth(
     const isAuth = !!token;
     const isAuthPage = req.nextUrl.pathname.startsWith('/auth');
     const isDashboard = req.nextUrl.pathname === '/';
-    const isPublicRoute = isDashboard ||
-                          req.nextUrl.pathname.startsWith('/_next') ||
-                          req.nextUrl.pathname.startsWith('/api/auth') ||
-                          isAuthPage;
 
-    // Allow access to auth pages and dashboard (always public)
-    if (isPublicRoute) {
+    // Always allow access to auth pages and dashboard
+    if (isAuthPage || isDashboard) {
       return NextResponse.next();
     }
 
@@ -44,14 +40,13 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token: _token, req }) => {
-        // Allow access to dashboard and public routes without authentication
+        // Always allow access to dashboard, auth pages, NextJS internals, and auth API
         const isDashboard = req.nextUrl.pathname === '/';
-        const isPublicRoute = isDashboard ||
-                              req.nextUrl.pathname.startsWith('/_next') ||
-                              req.nextUrl.pathname.startsWith('/api/auth') ||
-                              req.nextUrl.pathname.startsWith('/auth');
+        const isAuthPage = req.nextUrl.pathname.startsWith('/auth');
+        const isNextInternal = req.nextUrl.pathname.startsWith('/_next');
+        const isAuthApi = req.nextUrl.pathname.startsWith('/api/auth');
 
-        if (isPublicRoute) {
+        if (isDashboard || isAuthPage || isNextInternal || isAuthApi) {
           return true;
         }
 
