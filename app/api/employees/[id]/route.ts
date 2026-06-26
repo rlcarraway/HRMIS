@@ -22,7 +22,7 @@ export async function GET(
   }
 
   try {
-    const employee = serverStorage.getEmployee(params.id);
+    const employee = await serverStorage.getEmployee(params.id);
 
     if (!employee) {
       return NextResponse.json(
@@ -59,7 +59,7 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const oldEmployee = serverStorage.getEmployee(params.id);
+    const oldEmployee = await serverStorage.getEmployee(params.id);
 
     if (!oldEmployee) {
       return NextResponse.json(
@@ -87,7 +87,7 @@ export async function PUT(
       );
     }
 
-    const updatedEmployee = serverStorage.updateEmployee(params.id, body);
+    const updatedEmployee = await serverStorage.updateEmployee(params.id, body);
 
     if (!updatedEmployee) {
       return NextResponse.json(
@@ -99,7 +99,7 @@ export async function PUT(
     // Track changes
     const changes = getObjectDiff(oldEmployee, updatedEmployee);
     if (Object.keys(changes).length > 0) {
-      serverStorage.addHistoryEntry({
+      await serverStorage.addHistoryEntry({
         id: generateId(),
         employeeId: params.id,
         action: 'update',
@@ -162,7 +162,7 @@ export async function DELETE(
   }
 
   try {
-    const employee = serverStorage.getEmployee(params.id);
+    const employee = await serverStorage.getEmployee(params.id);
 
     if (!employee) {
       return NextResponse.json(
@@ -171,7 +171,7 @@ export async function DELETE(
       );
     }
 
-    const success = serverStorage.deleteEmployee(params.id);
+    const success = await serverStorage.deleteEmployee(params.id);
 
     if (!success) {
       return NextResponse.json(
@@ -181,7 +181,7 @@ export async function DELETE(
     }
 
     // Add to history
-    serverStorage.addHistoryEntry({
+    await serverStorage.addHistoryEntry({
       id: generateId(),
       employeeId: params.id,
       action: 'delete',

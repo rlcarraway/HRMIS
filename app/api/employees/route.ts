@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   }
   try {
     const searchParams = request.nextUrl.searchParams;
-    let employees = serverStorage.getEmployees();
+    let employees = await serverStorage.getEmployees();
 
     // Apply filters based on query parameters
     for (const [key, value] of searchParams.entries()) {
@@ -175,10 +175,10 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     };
 
-    serverStorage.addEmployee(newEmployee);
+    await serverStorage.addEmployee(newEmployee);
 
     // Add to history
-    serverStorage.addHistoryEntry({
+    await serverStorage.addHistoryEntry({
       id: generateId(),
       employeeId: newEmployee.id,
       action: 'create',

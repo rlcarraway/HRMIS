@@ -21,9 +21,10 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const oldAttribute = serverStorage.getCustomAttributes().find(attr => attr.id === params.id);
+    const allAttributes = await serverStorage.getCustomAttributes();
+    const oldAttribute = allAttributes.find(attr => attr.id === params.id);
 
-    const updatedAttribute = serverStorage.updateCustomAttribute(params.id, body);
+    const updatedAttribute = await serverStorage.updateCustomAttribute(params.id, body);
 
     if (!updatedAttribute) {
       return NextResponse.json(
@@ -81,8 +82,9 @@ export async function DELETE(
       );
     }
 
-    const attribute = serverStorage.getCustomAttributes().find(attr => attr.id === params.id);
-    const success = serverStorage.deleteCustomAttribute(params.id);
+    const allAttributes = await serverStorage.getCustomAttributes();
+    const attribute = allAttributes.find(attr => attr.id === params.id);
+    const success = await serverStorage.deleteCustomAttribute(params.id);
 
     if (!success) {
       return NextResponse.json(

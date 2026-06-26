@@ -7,7 +7,7 @@ import { logConfigChange } from '@/lib/serverAuditLog';
 // GET /api/logo - Get company logo
 export async function GET() {
   try {
-    const logo = serverStorage.getLogo();
+    const logo = await serverStorage.getLogo();
     return NextResponse.json({
       success: true,
       data: logo,
@@ -44,7 +44,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    serverStorage.setLogo(logo);
+    await serverStorage.setLogo(logo);
 
     // Log the logo upload
     logConfigChange(
@@ -87,7 +87,7 @@ export async function DELETE() {
       );
     }
 
-    serverStorage.removeLogo();
+    await serverStorage.removeLogo();
 
     // Log the logo removal
     logConfigChange(

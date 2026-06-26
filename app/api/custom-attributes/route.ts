@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const attributes = serverStorage.getCustomAttributes();
+    const attributes = await serverStorage.getCustomAttributes();
 
     return NextResponse.json({
       success: true,
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       required: !!required,
     };
 
-    serverStorage.addCustomAttribute(newAttribute);
+    await serverStorage.addCustomAttribute(newAttribute);
 
     // Log the attribute creation
     logConfigChange(
