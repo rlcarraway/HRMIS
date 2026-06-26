@@ -1,21 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import { supabaseAdmin } from './supabase';
 import { Employee, CustomAttribute, ChangeHistory, ExportSchedule, ExportMetadata, ScheduledExportLog, CoreAttributeConfig } from './types';
-
-// In Vercel/serverless, use /tmp which is writable but ephemeral
-// In local dev, use ./data directory
-const isVercel = process.env.VERCEL === '1';
-const DATA_DIR = isVercel ? '/tmp/data' : path.join(process.cwd(), 'data');
-const DATA_FILES = {
-  EMPLOYEES: path.join(DATA_DIR, 'employees.json'),
-  CUSTOM_ATTRIBUTES: path.join(DATA_DIR, 'custom_attributes.json'),
-  CORE_ATTRIBUTES: path.join(DATA_DIR, 'core_attributes.json'),
-  HISTORY: path.join(DATA_DIR, 'history.json'),
-  EXPORT_SCHEDULES: path.join(DATA_DIR, 'export_schedules.json'),
-  EXPORT_METADATA: path.join(DATA_DIR, 'export_metadata.json'),
-  EXPORT_LOGS: path.join(DATA_DIR, 'export_logs.json'),
-  LOGO: path.join(DATA_DIR, 'logo.txt'),
-} as const;
 
 // Default core attributes configuration
 const DEFAULT_CORE_ATTRIBUTES: CoreAttributeConfig[] = [
@@ -31,259 +15,705 @@ const DEFAULT_CORE_ATTRIBUTES: CoreAttributeConfig[] = [
   { id: '10', fieldName: 'endDate', displayName: 'End Date', dataType: 'date', required: false },
 ];
 
-// Server-side file-based storage
+/**
+ * Server-side storage using Supabase PostgreSQL
+ * All operations are async and use the Supabase admin client
+ */
 class ServerStorage {
-  constructor() {
-    this.ensureDataDirectory();
-  }
-
-  private ensureDataDirectory(): void {
-    try {
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-      }
-    } catch (error) {
-      console.error('Error creating data directory:', error);
-      // In serverless environments, this might fail but we continue
-      // Data will be stored in memory or retrieved from environment variables
-    }
-  }
-
-  private readFile<T>(filePath: string, defaultValue: T): T {
-    try {
-      if (!fs.existsSync(filePath)) {
-        return defaultValue;
-      }
-      const content = fs.readFileSync(filePath, 'utf-8');
-      return JSON.parse(content);
-    } catch (error) {
-      console.error(`Error reading file "${filePath}":`, error);
-      return defaultValue;
-    }
-  }
-
-  private writeFile<T>(filePath: string, data: T): void {
-    try {
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-    } catch (error) {
-      console.error(`Error writing file "${filePath}":`, error);
-    }
-  }
-
   // Employee operations
-  getEmployees(): Employee[] {
-    return this.readFile<Employee[]>(DATA_FILES.EMPLOYEES, []);
+  async getEmployees(): Promise<Employee[]> {
+    const { data, error } = await supabaseAdmin
+      .from('employees')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching employees:', error);
+      return [];
+    }
+
+    return (data || []).map(this.mapEmployeeFromDb);
   }
 
-  setEmployees(employees: Employee[]): void {
-    this.writeFile(DATA_FILES.EMPLOYEES, employees);
+  async getEmployee(id: string): Promise<Employee | null> {
+    const { data, error } = await supabaseAdmin
+      .from('employees')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching employee:', error);
+      return null;
+    }
+
+    return data ? this.mapEmployeeFromDb(data) : null;
   }
 
-  updateEmployees(employees: Employee[]): void {
-    this.setEmployees(employees);
+  async addEmployee(employee: Employee): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('employees')
+      .insert([this.mapEmployeeToDb(employee)]);
+
+    if (error) {
+      console.error('Error adding employee:', error);
+      throw error;
+    }
   }
 
-  getEmployee(id: string): Employee | null {
-    const employees = this.getEmployees();
-    return employees.find(emp => emp.id === id) || null;
+  async updateEmployee(id: string, updates: Partial<Employee>): Promise<Employee | null> {
+    const dbUpdates = this.mapEmployeeToDb(updates as Employee);
+    // Remove undefined values
+    Object.keys(dbUpdates).forEach(key => {
+      if (dbUpdates[key] === undefined) {
+        delete dbUpdates[key];
+      }
+    });
+
+    const { data, error } = await supabaseAdmin
+      .from('employees')
+      .update({
+        ...dbUpdates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating employee:', error);
+      return null;
+    }
+
+    return data ? this.mapEmployeeFromDb(data) : null;
   }
 
-  addEmployee(employee: Employee): void {
-    const employees = this.getEmployees();
-    employees.push(employee);
-    this.setEmployees(employees);
-  }
+  async deleteEmployee(id: string): Promise<boolean> {
+    const { error } = await supabaseAdmin
+      .from('employees')
+      .delete()
+      .eq('id', id);
 
-  updateEmployee(id: string, updates: Partial<Employee>): Employee | null {
-    const employees = this.getEmployees();
-    const index = employees.findIndex(emp => emp.id === id);
-    if (index === -1) return null;
+    if (error) {
+      console.error('Error deleting employee:', error);
+      return false;
+    }
 
-    employees[index] = { ...employees[index], ...updates, updatedAt: new Date().toISOString() };
-    this.setEmployees(employees);
-    return employees[index];
-  }
-
-  deleteEmployee(id: string): boolean {
-    const employees = this.getEmployees();
-    const filtered = employees.filter(emp => emp.id !== id);
-    if (filtered.length === employees.length) return false;
-    this.setEmployees(filtered);
     return true;
+  }
+
+  async setEmployees(employees: Employee[]): Promise<void> {
+    // Delete all existing employees
+    await supabaseAdmin
+      .from('employees')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (employees.length > 0) {
+      const { error } = await supabaseAdmin
+        .from('employees')
+        .insert(employees.map(emp => this.mapEmployeeToDb(emp)));
+
+      if (error) {
+        console.error('Error setting employees:', error);
+        throw error;
+      }
+    }
+  }
+
+  async updateEmployees(employees: Employee[]): Promise<void> {
+    await this.setEmployees(employees);
   }
 
   // Custom attributes operations
-  getCustomAttributes(): CustomAttribute[] {
-    return this.readFile<CustomAttribute[]>(DATA_FILES.CUSTOM_ATTRIBUTES, []);
+  async getCustomAttributes(): Promise<CustomAttribute[]> {
+    const { data, error } = await supabaseAdmin
+      .from('custom_attributes')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching custom attributes:', error);
+      return [];
+    }
+
+    return (data || []).map(this.mapCustomAttributeFromDb);
   }
 
-  setCustomAttributes(attributes: CustomAttribute[]): void {
-    this.writeFile(DATA_FILES.CUSTOM_ATTRIBUTES, attributes);
+  async addCustomAttribute(attribute: CustomAttribute): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('custom_attributes')
+      .insert([this.mapCustomAttributeToDb(attribute)]);
+
+    if (error) {
+      console.error('Error adding custom attribute:', error);
+      throw error;
+    }
   }
 
-  addCustomAttribute(attribute: CustomAttribute): void {
-    const attributes = this.getCustomAttributes();
-    attributes.push(attribute);
-    this.setCustomAttributes(attributes);
+  async updateCustomAttribute(id: string, updates: Partial<CustomAttribute>): Promise<CustomAttribute | null> {
+    const dbUpdates = this.mapCustomAttributeToDb(updates as CustomAttribute);
+    // Remove undefined values
+    Object.keys(dbUpdates).forEach(key => {
+      if (dbUpdates[key] === undefined) {
+        delete dbUpdates[key];
+      }
+    });
+
+    const { data, error } = await supabaseAdmin
+      .from('custom_attributes')
+      .update(dbUpdates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating custom attribute:', error);
+      return null;
+    }
+
+    return data ? this.mapCustomAttributeFromDb(data) : null;
   }
 
-  updateCustomAttribute(id: string, updates: Partial<CustomAttribute>): CustomAttribute | null {
-    const attributes = this.getCustomAttributes();
-    const index = attributes.findIndex(attr => attr.id === id);
-    if (index === -1) return null;
+  async deleteCustomAttribute(id: string): Promise<boolean> {
+    const { error } = await supabaseAdmin
+      .from('custom_attributes')
+      .delete()
+      .eq('id', id);
 
-    attributes[index] = { ...attributes[index], ...updates };
-    this.setCustomAttributes(attributes);
-    return attributes[index];
-  }
+    if (error) {
+      console.error('Error deleting custom attribute:', error);
+      return false;
+    }
 
-  deleteCustomAttribute(id: string): boolean {
-    const attributes = this.getCustomAttributes();
-    const filtered = attributes.filter(attr => attr.id !== id);
-    if (filtered.length === attributes.length) return false;
-    this.setCustomAttributes(filtered);
     return true;
+  }
+
+  async setCustomAttributes(attributes: CustomAttribute[]): Promise<void> {
+    // Delete all existing attributes
+    await supabaseAdmin
+      .from('custom_attributes')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (attributes.length > 0) {
+      const { error } = await supabaseAdmin
+        .from('custom_attributes')
+        .insert(attributes.map(attr => this.mapCustomAttributeToDb(attr)));
+
+      if (error) {
+        console.error('Error setting custom attributes:', error);
+        throw error;
+      }
+    }
   }
 
   // History operations
-  getHistory(employeeId?: string): ChangeHistory[] {
-    const history = this.readFile<ChangeHistory[]>(DATA_FILES.HISTORY, []);
+  async getHistory(employeeId?: string): Promise<ChangeHistory[]> {
+    let query = supabaseAdmin
+      .from('change_history')
+      .select('*')
+      .order('timestamp', { ascending: false });
+
     if (employeeId) {
-      return history.filter(entry => entry.employeeId === employeeId);
+      query = query.eq('employee_id', employeeId);
     }
-    return history;
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching history:', error);
+      return [];
+    }
+
+    return (data || []).map(this.mapHistoryFromDb);
   }
 
-  addHistoryEntry(entry: ChangeHistory): void {
-    const history = this.getHistory();
-    history.push(entry);
-    this.writeFile(DATA_FILES.HISTORY, history);
+  async addHistoryEntry(entry: ChangeHistory): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('change_history')
+      .insert([this.mapHistoryToDb(entry)]);
+
+    if (error) {
+      console.error('Error adding history entry:', error);
+      throw error;
+    }
   }
 
-  clearAllData(): void {
-    this.writeFile(DATA_FILES.EMPLOYEES, []);
-    this.writeFile(DATA_FILES.CUSTOM_ATTRIBUTES, []);
-    this.writeFile(DATA_FILES.HISTORY, []);
+  // Export schedules operations
+  async getExportSchedules(): Promise<ExportSchedule[]> {
+    const { data, error } = await supabaseAdmin
+      .from('export_schedules')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching export schedules:', error);
+      return [];
+    }
+
+    return (data || []).map(this.mapExportScheduleFromDb);
   }
 
-  // Export schedule operations
-  getExportSchedules(): ExportSchedule[] {
-    return this.readFile<ExportSchedule[]>(DATA_FILES.EXPORT_SCHEDULES, []);
+  async getExportSchedule(id: string): Promise<ExportSchedule | null> {
+    const { data, error } = await supabaseAdmin
+      .from('export_schedules')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching export schedule:', error);
+      return null;
+    }
+
+    return data ? this.mapExportScheduleFromDb(data) : null;
   }
 
-  setExportSchedules(schedules: ExportSchedule[]): void {
-    this.writeFile(DATA_FILES.EXPORT_SCHEDULES, schedules);
+  async addExportSchedule(schedule: ExportSchedule): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('export_schedules')
+      .insert([this.mapExportScheduleToDb(schedule)]);
+
+    if (error) {
+      console.error('Error adding export schedule:', error);
+      throw error;
+    }
   }
 
-  getExportSchedule(id: string): ExportSchedule | null {
-    const schedules = this.getExportSchedules();
-    return schedules.find(schedule => schedule.id === id) || null;
+  async updateExportSchedule(id: string, updates: Partial<ExportSchedule>): Promise<ExportSchedule | null> {
+    const dbUpdates = this.mapExportScheduleToDb(updates as ExportSchedule);
+    // Remove undefined values
+    Object.keys(dbUpdates).forEach(key => {
+      if (dbUpdates[key] === undefined) {
+        delete dbUpdates[key];
+      }
+    });
+
+    const { data, error } = await supabaseAdmin
+      .from('export_schedules')
+      .update({
+        ...dbUpdates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating export schedule:', error);
+      return null;
+    }
+
+    return data ? this.mapExportScheduleFromDb(data) : null;
   }
 
-  addExportSchedule(schedule: ExportSchedule): void {
-    const schedules = this.getExportSchedules();
-    schedules.push(schedule);
-    this.setExportSchedules(schedules);
-  }
+  async deleteExportSchedule(id: string): Promise<boolean> {
+    const { error } = await supabaseAdmin
+      .from('export_schedules')
+      .delete()
+      .eq('id', id);
 
-  updateExportSchedule(id: string, updates: Partial<ExportSchedule>): ExportSchedule | null {
-    const schedules = this.getExportSchedules();
-    const index = schedules.findIndex(schedule => schedule.id === id);
-    if (index === -1) return null;
+    if (error) {
+      console.error('Error deleting export schedule:', error);
+      return false;
+    }
 
-    schedules[index] = { ...schedules[index], ...updates, updatedAt: new Date().toISOString() };
-    this.setExportSchedules(schedules);
-    return schedules[index];
-  }
-
-  deleteExportSchedule(id: string): boolean {
-    const schedules = this.getExportSchedules();
-    const filtered = schedules.filter(schedule => schedule.id !== id);
-    if (filtered.length === schedules.length) return false;
-    this.setExportSchedules(filtered);
     return true;
   }
 
-  // Export metadata operations
-  getExportMetadata(): ExportMetadata {
-    return this.readFile<ExportMetadata>(DATA_FILES.EXPORT_METADATA, {
-      totalExportsCount: 0,
-      scheduledExportsCount: 0,
-      manualExportsCount: 0,
-    });
+  async setExportSchedules(schedules: ExportSchedule[]): Promise<void> {
+    // Delete all existing schedules
+    await supabaseAdmin
+      .from('export_schedules')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (schedules.length > 0) {
+      const { error } = await supabaseAdmin
+        .from('export_schedules')
+        .insert(schedules.map(schedule => this.mapExportScheduleToDb(schedule)));
+
+      if (error) {
+        console.error('Error setting export schedules:', error);
+        throw error;
+      }
+    }
   }
 
-  updateExportMetadata(updates: Partial<ExportMetadata>): ExportMetadata {
-    const metadata = this.getExportMetadata();
-    const updated = { ...metadata, ...updates };
-    this.writeFile(DATA_FILES.EXPORT_METADATA, updated);
-    return updated;
+  // Export metadata operations
+  async getExportMetadata(): Promise<ExportMetadata> {
+    const { data, error } = await supabaseAdmin
+      .from('export_metadata')
+      .select('*')
+      .eq('id', 1)
+      .single();
+
+    if (error) {
+      console.error('Error fetching export metadata:', error);
+      return {
+        totalExportsCount: 0,
+        scheduledExportsCount: 0,
+        manualExportsCount: 0,
+      };
+    }
+
+    return {
+      totalExportsCount: data.total_exports_count || 0,
+      scheduledExportsCount: data.scheduled_exports_count || 0,
+      manualExportsCount: data.manual_exports_count || 0,
+    };
+  }
+
+  async updateExportMetadata(updates: Partial<ExportMetadata>): Promise<ExportMetadata> {
+    const dbUpdates: any = {};
+    if (updates.totalExportsCount !== undefined) {
+      dbUpdates.total_exports_count = updates.totalExportsCount;
+    }
+    if (updates.scheduledExportsCount !== undefined) {
+      dbUpdates.scheduled_exports_count = updates.scheduledExportsCount;
+    }
+    if (updates.manualExportsCount !== undefined) {
+      dbUpdates.manual_exports_count = updates.manualExportsCount;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('export_metadata')
+      .update(dbUpdates)
+      .eq('id', 1)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating export metadata:', error);
+      return this.getExportMetadata();
+    }
+
+    return {
+      totalExportsCount: data.total_exports_count || 0,
+      scheduledExportsCount: data.scheduled_exports_count || 0,
+      manualExportsCount: data.manual_exports_count || 0,
+    };
   }
 
   // Export logs operations
-  getExportLogs(scheduleId?: string): ScheduledExportLog[] {
-    const logs = this.readFile<ScheduledExportLog[]>(DATA_FILES.EXPORT_LOGS, []);
+  async getExportLogs(scheduleId?: string): Promise<ScheduledExportLog[]> {
+    let query = supabaseAdmin
+      .from('export_logs')
+      .select('*')
+      .order('timestamp', { ascending: false });
+
     if (scheduleId) {
-      return logs.filter(log => log.scheduleId === scheduleId);
+      query = query.eq('schedule_id', scheduleId);
     }
-    return logs;
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching export logs:', error);
+      return [];
+    }
+
+    return (data || []).map(this.mapExportLogFromDb);
   }
 
-  addExportLog(log: ScheduledExportLog): void {
-    const logs = this.getExportLogs();
-    logs.push(log);
-    this.writeFile(DATA_FILES.EXPORT_LOGS, logs);
+  async addExportLog(log: ScheduledExportLog): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('export_logs')
+      .insert([this.mapExportLogToDb(log)]);
+
+    if (error) {
+      console.error('Error adding export log:', error);
+      throw error;
+    }
   }
 
   // Logo operations
-  getLogo(): string | null {
-    try {
-      if (!fs.existsSync(DATA_FILES.LOGO)) {
-        return null;
-      }
-      return fs.readFileSync(DATA_FILES.LOGO, 'utf-8');
-    } catch (error) {
-      console.error('Error reading logo:', error);
+  async getLogo(): Promise<string | null> {
+    const { data, error } = await supabaseAdmin
+      .from('company_settings')
+      .select('logo')
+      .eq('id', 1)
+      .single();
+
+    if (error) {
+      console.error('Error fetching logo:', error);
       return null;
     }
+
+    return data?.logo || null;
   }
 
-  setLogo(logoDataUrl: string): void {
-    try {
-      fs.writeFileSync(DATA_FILES.LOGO, logoDataUrl, 'utf-8');
-    } catch (error) {
-      console.error('Error writing logo:', error);
+  async setLogo(logoDataUrl: string): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('company_settings')
+      .upsert({
+        id: 1,
+        logo: logoDataUrl,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error('Error setting logo:', error);
+      throw error;
     }
   }
 
-  removeLogo(): void {
-    try {
-      if (fs.existsSync(DATA_FILES.LOGO)) {
-        fs.unlinkSync(DATA_FILES.LOGO);
-      }
-    } catch (error) {
+  async removeLogo(): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('company_settings')
+      .update({
+        logo: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', 1);
+
+    if (error) {
       console.error('Error removing logo:', error);
+      throw error;
     }
   }
 
-  // Core attributes configuration operations
-  getCoreAttributes(): CoreAttributeConfig[] {
-    const stored = this.readFile<CoreAttributeConfig[]>(DATA_FILES.CORE_ATTRIBUTES, []);
-    return stored.length > 0 ? stored : DEFAULT_CORE_ATTRIBUTES;
+  // Core attributes operations
+  async getCoreAttributes(): Promise<CoreAttributeConfig[]> {
+    const { data, error } = await supabaseAdmin
+      .from('core_attributes')
+      .select('*')
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching core attributes:', error);
+      return DEFAULT_CORE_ATTRIBUTES;
+    }
+
+    if (!data || data.length === 0) {
+      // Initialize with defaults
+      await this.initializeDefaultCoreAttributes();
+      return DEFAULT_CORE_ATTRIBUTES;
+    }
+
+    return data.map(this.mapCoreAttributeFromDb);
   }
 
-  setCoreAttributes(attributes: CoreAttributeConfig[]): void {
-    this.writeFile(DATA_FILES.CORE_ATTRIBUTES, attributes);
+  async setCoreAttributes(attributes: CoreAttributeConfig[]): Promise<void> {
+    // Delete all existing core attributes
+    await supabaseAdmin
+      .from('core_attributes')
+      .delete()
+      .neq('id', '0');
+
+    if (attributes.length > 0) {
+      const { error } = await supabaseAdmin
+        .from('core_attributes')
+        .insert(attributes.map((attr, index) => this.mapCoreAttributeToDb(attr, index)));
+
+      if (error) {
+        console.error('Error setting core attributes:', error);
+        throw error;
+      }
+    }
   }
 
-  updateCoreAttribute(id: string, updates: Partial<CoreAttributeConfig>): CoreAttributeConfig | null {
-    const attributes = this.getCoreAttributes();
-    const index = attributes.findIndex(attr => attr.id === id);
+  async updateCoreAttribute(id: string, updates: Partial<CoreAttributeConfig>): Promise<CoreAttributeConfig | null> {
+    const current = await this.getCoreAttributes();
+    const index = current.findIndex(attr => attr.id === id);
     if (index === -1) return null;
 
-    attributes[index] = { ...attributes[index], ...updates };
-    this.setCoreAttributes(attributes);
-    return attributes[index];
+    const updated = { ...current[index], ...updates };
+    const dbUpdates = this.mapCoreAttributeToDb(updated, index);
+
+    const { data, error } = await supabaseAdmin
+      .from('core_attributes')
+      .update(dbUpdates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating core attribute:', error);
+      return null;
+    }
+
+    return data ? this.mapCoreAttributeFromDb(data) : null;
+  }
+
+  async clearAllData(): Promise<void> {
+    await supabaseAdmin.from('employees').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabaseAdmin.from('custom_attributes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabaseAdmin.from('change_history').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  }
+
+  // Private helper methods
+
+  private async initializeDefaultCoreAttributes(): Promise<void> {
+    await this.setCoreAttributes(DEFAULT_CORE_ATTRIBUTES);
+  }
+
+  // Mapper functions (camelCase to snake_case and vice versa)
+
+  private mapEmployeeFromDb(data: any): Employee {
+    return {
+      id: data.id,
+      type: data.type,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email,
+      department: data.department,
+      title: data.title,
+      manager: data.manager,
+      status: data.status,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      customAttributes: data.custom_attributes || {},
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  }
+
+  private mapEmployeeToDb(employee: Partial<Employee>): any {
+    const mapped: any = {};
+    if (employee.id !== undefined) mapped.id = employee.id;
+    if (employee.type !== undefined) mapped.type = employee.type;
+    if (employee.firstName !== undefined) mapped.first_name = employee.firstName;
+    if (employee.lastName !== undefined) mapped.last_name = employee.lastName;
+    if (employee.email !== undefined) mapped.email = employee.email;
+    if (employee.department !== undefined) mapped.department = employee.department;
+    if (employee.title !== undefined) mapped.title = employee.title;
+    if (employee.manager !== undefined) mapped.manager = employee.manager;
+    if (employee.status !== undefined) mapped.status = employee.status;
+    if (employee.startDate !== undefined) mapped.start_date = employee.startDate;
+    if (employee.endDate !== undefined) mapped.end_date = employee.endDate;
+    if (employee.customAttributes !== undefined) mapped.custom_attributes = employee.customAttributes;
+    if (employee.createdAt !== undefined) mapped.created_at = employee.createdAt;
+    if (employee.updatedAt !== undefined) mapped.updated_at = employee.updatedAt;
+    return mapped;
+  }
+
+  private mapCustomAttributeFromDb(data: any): CustomAttribute {
+    return {
+      id: data.id,
+      name: data.name,
+      dataType: data.data_type,
+      required: data.required,
+    };
+  }
+
+  private mapCustomAttributeToDb(attr: Partial<CustomAttribute>): any {
+    const mapped: any = {};
+    if (attr.id !== undefined) mapped.id = attr.id;
+    if (attr.name !== undefined) mapped.name = attr.name;
+    if (attr.dataType !== undefined) mapped.data_type = attr.dataType;
+    if (attr.required !== undefined) mapped.required = attr.required;
+    return mapped;
+  }
+
+  private mapHistoryFromDb(data: any): ChangeHistory {
+    return {
+      id: data.id,
+      employeeId: data.employee_id,
+      action: data.action,
+      changes: data.changes,
+      timestamp: data.timestamp,
+      changedBy: data.changed_by,
+    };
+  }
+
+  private mapHistoryToDb(entry: ChangeHistory): any {
+    return {
+      id: entry.id,
+      employee_id: entry.employeeId,
+      action: entry.action,
+      changes: entry.changes,
+      timestamp: entry.timestamp,
+      changed_by: entry.changedBy,
+    };
+  }
+
+  private mapExportScheduleFromDb(data: any): ExportSchedule {
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      scheduleType: data.schedule_type,
+      time: data.time,
+      dayOfWeek: data.day_of_week,
+      dayOfMonth: data.day_of_month,
+      format: data.format,
+      includeFields: data.include_fields,
+      enabled: data.enabled,
+      destination: data.destination,
+      lastRunAt: data.last_run_at,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  }
+
+  private mapExportScheduleToDb(schedule: Partial<ExportSchedule>): any {
+    const mapped: any = {};
+    if (schedule.id !== undefined) mapped.id = schedule.id;
+    if (schedule.name !== undefined) mapped.name = schedule.name;
+    if (schedule.description !== undefined) mapped.description = schedule.description;
+    if (schedule.scheduleType !== undefined) mapped.schedule_type = schedule.scheduleType;
+    if (schedule.time !== undefined) mapped.time = schedule.time;
+    if (schedule.dayOfWeek !== undefined) mapped.day_of_week = schedule.dayOfWeek;
+    if (schedule.dayOfMonth !== undefined) mapped.day_of_month = schedule.dayOfMonth;
+    if (schedule.format !== undefined) mapped.format = schedule.format;
+    if (schedule.includeFields !== undefined) mapped.include_fields = schedule.includeFields;
+    if (schedule.enabled !== undefined) mapped.enabled = schedule.enabled;
+    if (schedule.destination !== undefined) mapped.destination = schedule.destination;
+    if (schedule.lastRunAt !== undefined) mapped.last_run_at = schedule.lastRunAt;
+    if (schedule.createdAt !== undefined) mapped.created_at = schedule.createdAt;
+    if (schedule.updatedAt !== undefined) mapped.updated_at = schedule.updatedAt;
+    return mapped;
+  }
+
+  private mapExportLogFromDb(data: any): ScheduledExportLog {
+    return {
+      id: data.id,
+      scheduleId: data.schedule_id,
+      timestamp: data.timestamp,
+      status: data.status,
+      recordsExported: data.records_exported,
+      errorMessage: data.error_message,
+      destination: data.destination,
+    };
+  }
+
+  private mapExportLogToDb(log: ScheduledExportLog): any {
+    return {
+      id: log.id,
+      schedule_id: log.scheduleId,
+      timestamp: log.timestamp,
+      status: log.status,
+      records_exported: log.recordsExported,
+      error_message: log.errorMessage,
+      destination: log.destination,
+    };
+  }
+
+  private mapCoreAttributeFromDb(data: any): CoreAttributeConfig {
+    return {
+      id: data.id,
+      fieldName: data.field_name,
+      displayName: data.display_name,
+      dataType: data.data_type,
+      required: data.required,
+      options: data.options,
+      locked: data.locked,
+    };
+  }
+
+  private mapCoreAttributeToDb(attr: CoreAttributeConfig, displayOrder: number): any {
+    return {
+      id: attr.id,
+      field_name: attr.fieldName,
+      display_name: attr.displayName,
+      data_type: attr.dataType,
+      required: attr.required,
+      options: attr.options || null,
+      locked: attr.locked,
+      display_order: displayOrder,
+    };
   }
 }
 
