@@ -58,7 +58,8 @@ export interface AuditLogEntry {
   errorMessage?: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Use /tmp on Vercel (read-only filesystem), ./data locally
+const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
 const AUDIT_LOG_FILE = path.join(DATA_DIR, 'audit-log.json');
 
 // Maximum number of log entries to keep (prevent file from growing too large)
@@ -66,8 +67,12 @@ const MAX_LOG_ENTRIES = 10000;
 
 // Ensure data directory exists
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch (error) {
+    console.error('Warning: Could not create data directory:', error);
   }
 }
 

@@ -14,13 +14,18 @@ export interface OutboundApiSettings {
   };
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Use /tmp on Vercel (read-only filesystem), ./data locally
+const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
 const SETTINGS_FILE = path.join(DATA_DIR, 'outbound-api-settings.json');
 
 // Ensure data directory exists
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch (error) {
+    console.error('Warning: Could not create data directory:', error);
   }
 }
 

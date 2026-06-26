@@ -120,11 +120,19 @@ export async function executeScheduledExport(scheduleId: string): Promise<{ succ
     const timestamp = executedAt.replace(/[:.]/g, '-');
     const exportTypePrefix = schedule.exportType === 'delta' ? 'delta' : 'full';
     const filename = `export-${exportTypePrefix}-${schedule.name.replace(/\s+/g, '-')}-${timestamp}.csv`;
-    const filepath = path.join(process.cwd(), 'exports', filename);
+
+    // Use /tmp on Vercel (read-only filesystem), ./exports locally
+    const exportsDir = process.env.VERCEL ? '/tmp/exports' : path.join(process.cwd(), 'exports');
+    const filepath = path.join(exportsDir, filename);
 
     // Ensure exports directory exists
-    fs.mkdirSync(path.join(process.cwd(), 'exports'), { recursive: true });
-    fs.writeFileSync(filepath, csv);
+    try {
+      fs.mkdirSync(exportsDir, { recursive: true });
+      fs.writeFileSync(filepath, csv);
+    } catch (error) {
+      console.error('Warning: Could not write export file:', error);
+      throw error; // Re-throw since this is critical
+    }
 
     // Update metadata
     const metadata = storage.getExportMetadata();

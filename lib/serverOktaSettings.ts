@@ -10,13 +10,19 @@ export interface OktaSettings {
 }
 
 // Path to store Okta settings
-const SETTINGS_FILE = path.join(process.cwd(), 'data', 'okta-settings.json');
+// Use /tmp on Vercel (read-only filesystem), ./data locally
+const DATA_DIR = process.env.VERCEL ? '/tmp/data' : path.join(process.cwd(), 'data');
+const SETTINGS_FILE = path.join(DATA_DIR, 'okta-settings.json');
 
 // Ensure data directory exists
 function ensureDataDirectory() {
-  const dataDir = path.join(process.cwd(), 'data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch (error) {
+    console.error('Warning: Could not create data directory:', error);
+    // Continue anyway - file operations will fail gracefully
   }
 }
 
