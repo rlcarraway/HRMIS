@@ -40,38 +40,46 @@ const providers: any[] = [
 
       const user = validateLocalUser(credentials.email, credentials.password);
       if (!user) {
-        // Log failed login attempt
-        await logUserAction(
-          'user.login',
-          `Failed login attempt for ${credentials.email}`,
-          {
-            userId: credentials.email,
-            userEmail: credentials.email,
-            success: false,
-            details: {
-              provider: 'credentials',
-              reason: 'invalid_credentials',
-            },
-          }
-        );
+        // Log failed login attempt (non-blocking - don't let logging errors break auth)
+        try {
+          await logUserAction(
+            'user.login',
+            `Failed login attempt for ${credentials.email}`,
+            {
+              userId: credentials.email,
+              userEmail: credentials.email,
+              success: false,
+              details: {
+                provider: 'credentials',
+                reason: 'invalid_credentials',
+              },
+            }
+          );
+        } catch (error) {
+          console.error('Error logging failed login attempt:', error);
+        }
         return null;
       }
 
-      // Log successful login
-      await logUserAction(
-        'user.login',
-        `User logged in: ${user.email}`,
-        {
-          userId: user.email,
-          userName: user.name,
-          userEmail: user.email,
-          success: true,
-          details: {
-            provider: 'credentials',
-            role: user.role,
-          },
-        }
-      );
+      // Log successful login (non-blocking - don't let logging errors break auth)
+      try {
+        await logUserAction(
+          'user.login',
+          `User logged in: ${user.email}`,
+          {
+            userId: user.email,
+            userName: user.name,
+            userEmail: user.email,
+            success: true,
+            details: {
+              provider: 'credentials',
+              role: user.role,
+            },
+          }
+        );
+      } catch (error) {
+        console.error('Error logging successful login:', error);
+      }
 
       return {
         id: user.id,
@@ -109,22 +117,26 @@ if (oktaConfigured) {
         provider: 'okta',
       });
 
-      // Log successful Okta login
-      await logUserAction(
-        'user.login',
-        `User logged in via Okta: ${federatedUser.email}`,
-        {
-          userId: federatedUser.email,
-          userName: federatedUser.name,
-          userEmail: federatedUser.email,
-          success: true,
-          details: {
-            provider: 'okta',
-            role: federatedUser.role,
-            providerId: profile.sub,
-          },
-        }
-      );
+      // Log successful Okta login (non-blocking - don't let logging errors break auth)
+      try {
+        await logUserAction(
+          'user.login',
+          `User logged in via Okta: ${federatedUser.email}`,
+          {
+            userId: federatedUser.email,
+            userName: federatedUser.name,
+            userEmail: federatedUser.email,
+            success: true,
+            details: {
+              provider: 'okta',
+              role: federatedUser.role,
+              providerId: profile.sub,
+            },
+          }
+        );
+      } catch (error) {
+        console.error('Error logging Okta login:', error);
+      }
 
       return {
         id: federatedUser.id,
