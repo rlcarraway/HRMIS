@@ -15,6 +15,13 @@ if (!isConfigured && process.env.NODE_ENV !== 'production') {
   console.warn('   Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to use Supabase');
 }
 
+// Next.js's App Router patches the global fetch() to cache GET requests by
+// default. supabase-js's PostgREST calls are plain GET fetches, so without
+// this override every read gets cached indefinitely on first call and never
+// reflects subsequent writes — force every Supabase request to bypass it.
+const noStoreFetch: typeof fetch = (input, init) =>
+  fetch(input, { ...init, cache: 'no-store' });
+
 /**
  * Server-side Supabase client with service role key
  * Bypasses Row Level Security (RLS) - use only in API routes and server components
@@ -27,7 +34,10 @@ export const supabaseAdmin = createClient(
     auth: {
       autoRefreshToken: false,
       persistSession: false
-    }
+    },
+    global: {
+      fetch: noStoreFetch,
+    },
   }
 );
 

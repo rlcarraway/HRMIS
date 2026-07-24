@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeScheduledExport } from '@/lib/scheduler';
+import { authenticateApiRequest } from '@/lib/apiAuth';
 
 // POST /api/export-schedules/[id]/execute - Manually trigger schedule execution
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await authenticateApiRequest(request, { requiredRole: 'admin' });
+    if (!auth.authenticated || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
     const result = await executeScheduledExport(params.id);
 
     if (!result.success) {

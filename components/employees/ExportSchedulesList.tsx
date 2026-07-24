@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/Button';
 import { ExportSchedule } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { Calendar, Clock, Play, Trash2, Edit, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Clock, Play, Trash2, Edit, CheckCircle, XCircle, Plus } from 'lucide-react';
 
 interface ExportSchedulesListProps {
   isOpen: boolean;
   onClose: () => void;
   schedules: ExportSchedule[];
+  onCreateNew: () => void;
   onEdit: (schedule: ExportSchedule) => void;
   onDelete: (id: string) => Promise<void>;
   onExecute: (id: string) => Promise<void>;
@@ -30,6 +31,7 @@ export function ExportSchedulesList({
   isOpen,
   onClose,
   schedules,
+  onCreateNew,
   onEdit,
   onDelete,
   onExecute,
@@ -87,6 +89,13 @@ export function ExportSchedulesList({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Export Schedules">
       <div className="space-y-4">
+        <div className="flex justify-end">
+          <Button variant="primary" onClick={onCreateNew} className="text-sm">
+            <Plus size={14} className="mr-1" />
+            New Schedule
+          </Button>
+        </div>
+
         {schedules.length === 0 ? (
           <div className="text-center py-12">
             <Calendar size={48} className="mx-auto text-gray-400 mb-3" />

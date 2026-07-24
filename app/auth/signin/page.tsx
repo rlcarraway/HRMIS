@@ -95,6 +95,31 @@ function SignInContent() {
         )}
 
         <div className="space-y-6">
+          {/* Okta Sign In */}
+          {showOktaButton && (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => signIn('okta', { callbackUrl })}
+                className="w-full"
+              >
+                Sign in with Okta
+              </Button>
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Local Sign In Form */}
           <form onSubmit={handleLocalSignIn} className="space-y-4">
             <div>
@@ -126,31 +151,6 @@ function SignInContent() {
               {isLoading ? 'Signing in...' : 'Sign in with Local Account'}
             </Button>
           </form>
-
-          {/* Divider */}
-          {showOktaButton && (
-            <>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-
-              {/* Okta Sign In */}
-              <Button
-                variant="secondary"
-                onClick={() => signIn('okta', { callbackUrl })}
-                className="w-full"
-              >
-                Sign in with Okta
-              </Button>
-            </>
-          )}
         </div>
 
         {/* Default Credentials */}

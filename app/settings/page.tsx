@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useRef, useEffect, useCallback } from 'react';
+import { Suspense, useState, useRef, useEffect } from 'react';
 import { useCustomAttributes } from '@/hooks/useCustomAttributes';
 import { useCoreAttributes } from '@/hooks/useCoreAttributes';
 import { useLogo } from '@/hooks/useLogo';
@@ -12,9 +12,9 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { Table, Column } from '@/components/ui/Table';
-import { Plus, Edit, Trash2, Upload, X, Building2, ArrowUp, ArrowDown, Settings as SettingsIcon, Sliders, Webhook, Database, Users as UsersIcon, Send, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Edit, Trash2, Upload, X, Building2, ArrowUp, ArrowDown, Settings as SettingsIcon, Sliders, Webhook, Users as UsersIcon, Send, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 
-type SettingsTab = 'system' | 'attributes' | 'outbound-api' | 'system-log' | 'inbound-api' | 'users';
+type SettingsTab = 'system' | 'attributes' | 'outbound-api' | 'inbound-api' | 'users';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -37,6 +37,9 @@ function SettingsContent() {
   });
   const [oktaSaved, setOktaSaved] = useState(false);
   const [oktaLoading, setOktaLoading] = useState(false);
+  // Starts as the SSR fallback and is corrected client-side after mount, so the
+  // server-rendered and first client-rendered pass match (avoids a hydration mismatch).
+  const [origin, setOrigin] = useState('http://localhost:3000');
   const { attributes, createAttribute, updateAttribute, deleteAttribute } = useCustomAttributes();
   const { attributes: coreAttributes, updateAttribute: updateCoreAttribute, resetToDefaults } = useCoreAttributes();
   useEmployees();
@@ -113,26 +116,21 @@ function SettingsContent() {
   const [payloadFormat, setPayloadFormat] = useState(defaultPayloadFormat);
   const [payloadValidationError, setPayloadValidationError] = useState<string>('');
 
-  // System Log state
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [auditLogsLoading, setAuditLogsLoading] = useState(false);
-  const [auditLogSearch, setAuditLogSearch] = useState('');
-  const [auditLogFromDate, setAuditLogFromDate] = useState('');
-  const [auditLogToDate, setAuditLogToDate] = useState('');
-  const [auditLogTotal, setAuditLogTotal] = useState(0);
-  const [auditLogPage, setAuditLogPage] = useState(0);
-  const [auditLogLimit] = useState(50);
-  const [showAuditLogFilters, setShowAuditLogFilters] = useState(false);
   const [showApiTestAdvanced, setShowApiTestAdvanced] = useState(false);
   const [showHttpHeaders, setShowHttpHeaders] = useState(false);
 
   // Load tab from URL parameter
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['system', 'attributes', 'outbound-api', 'system-log', 'inbound-api', 'users'].includes(tab)) {
+    if (tab && ['system', 'attributes', 'outbound-api', 'inbound-api', 'users'].includes(tab)) {
       setActiveTab(tab as SettingsTab);
     }
   }, [searchParams]);
+
+  // Correct the origin client-side after mount to avoid an SSR/client hydration mismatch
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   // Close endpoint dropdown when clicking outside
   useEffect(() => {
@@ -601,14 +599,6 @@ function SettingsContent() {
     }
   }, [activeTab]);
 
-  // Load Audit Logs when tab is active or page changes
-  useEffect(() => {
-    if (activeTab === 'system-log') {
-      loadAuditLogs();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, auditLogPage]);
-
   // Load Okta Settings when system tab is active
   useEffect(() => {
     if (activeTab === 'system') {
@@ -869,42 +859,6 @@ function SettingsContent() {
     setOutboundApiSettings({ ...outboundApiSettings, headers: newHeaders });
   };
 
-  // Audit Log functions
-  const loadAuditLogs = useCallback(async () => {
-    setAuditLogsLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (auditLogSearch) params.append('search', auditLogSearch);
-      if (auditLogFromDate) params.append('fromDate', auditLogFromDate);
-      if (auditLogToDate) params.append('toDate', auditLogToDate);
-      params.append('limit', auditLogLimit.toString());
-      params.append('offset', (auditLogPage * auditLogLimit).toString());
-
-      const response = await fetch(`/api/audit-logs?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setAuditLogs(data.logs || []);
-        setAuditLogTotal(data.total || 0);
-      }
-    } catch (error) {
-      console.error('Error loading audit logs:', error);
-    } finally {
-      setAuditLogsLoading(false);
-    }
-  }, [auditLogSearch, auditLogFromDate, auditLogToDate, auditLogLimit, auditLogPage]);
-
-  const handleAuditLogSearch = () => {
-    setAuditLogPage(0); // Reset to first page when searching
-    loadAuditLogs();
-  };
-
-  const clearAuditLogFilters = () => {
-    setAuditLogSearch('');
-    setAuditLogFromDate('');
-    setAuditLogToDate('');
-    setAuditLogPage(0);
-  };
-
   const columns: Column<CustomAttribute>[] = [
     {
       key: 'name',
@@ -1052,17 +1006,6 @@ function SettingsContent() {
             >
               <Webhook size={18} />
               Inbound API
-            </button>
-            <button
-              onClick={() => setActiveTab('system-log')}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'system-log'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <Database size={18} />
-              System Log
             </button>
           </nav>
         </div>
@@ -1231,11 +1174,11 @@ function SettingsContent() {
                   </li>
                   <li className="flex gap-2">
                     <span className="font-medium">3.</span>
-                    <span>Configure the Sign-in redirect URI: <code className="bg-blue-100 px-1 rounded">{typeof window !== 'undefined' ? `${window.location.origin}/api/auth/callback/okta` : 'http://localhost:3001/api/auth/callback/okta'}</code></span>
+                    <span>Configure the Sign-in redirect URI: <code className="bg-blue-100 px-1 rounded">{origin}/api/auth/callback/okta</code></span>
                   </li>
                   <li className="flex gap-2">
                     <span className="font-medium">4.</span>
-                    <span>Configure the Sign-out redirect URI: <code className="bg-blue-100 px-1 rounded">{typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'}</code></span>
+                    <span>Configure the Sign-out redirect URI: <code className="bg-blue-100 px-1 rounded">{origin}</code></span>
                   </li>
                   <li className="flex gap-2">
                     <span className="font-medium">5.</span>
@@ -1736,232 +1679,6 @@ Authorization: Bearer <access_token>`}</pre>
                 )}
               </div>
             )}
-          </div>
-        )}
-
-        {activeTab === 'system-log' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">System Audit Log</h2>
-              <p className="text-sm text-gray-600">
-                View detailed audit trail of all system operations including user actions, API calls, and configuration changes.
-              </p>
-            </div>
-
-            {/* Search and Filter Controls */}
-            <div className="bg-gray-50 rounded-lg border border-gray-200">
-              <button
-                onClick={() => setShowAuditLogFilters(!showAuditLogFilters)}
-                className="w-full flex items-center justify-between p-6 hover:bg-gray-100 transition-colors"
-              >
-                <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-                {showAuditLogFilters ? (
-                  <ChevronUp size={20} className="text-gray-500" />
-                ) : (
-                  <ChevronDown size={20} className="text-gray-500" />
-                )}
-              </button>
-              {showAuditLogFilters && (
-                <div className="px-6 pb-6 border-t border-gray-200">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
-                    <div className="md:col-span-3">
-                      <Input
-                        label="Search"
-                        type="text"
-                        value={auditLogSearch}
-                        onChange={(e) => setAuditLogSearch(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleAuditLogSearch();
-                          }
-                        }}
-                        placeholder="Search by description, action, user, or error message..."
-                      />
-                    </div>
-
-                    <div>
-                      <Input
-                        label="From Date"
-                        type="datetime-local"
-                        value={auditLogFromDate}
-                        onChange={(e) => setAuditLogFromDate(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <Input
-                        label="To Date"
-                        type="datetime-local"
-                        value={auditLogToDate}
-                        onChange={(e) => setAuditLogToDate(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="flex items-end gap-3">
-                      <Button variant="primary" onClick={handleAuditLogSearch}>
-                        Apply Filters
-                      </Button>
-                      <Button variant="secondary" onClick={clearAuditLogFilters}>
-                        Clear
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 text-sm text-gray-600">
-                    Showing {auditLogs.length} of {auditLogTotal} log entries
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Audit Log Table */}
-            {auditLogsLoading ? (
-              <div className="text-center py-8 text-gray-600">Loading audit logs...</div>
-            ) : auditLogs.length === 0 ? (
-              <div className="bg-gray-50 rounded-lg p-8 border border-gray-200 text-center">
-                <Database size={48} className="mx-auto text-gray-400 mb-3" />
-                <p className="text-gray-600">No audit log entries found</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Timestamp
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Level
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Action
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          User
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Description
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Duration
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {auditLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(log.timestamp).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              log.level === 'success' ? 'bg-green-100 text-green-800' :
-                              log.level === 'error' ? 'bg-red-100 text-red-800' :
-                              log.level === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {log.level}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                            {log.action}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {log.userName || log.userEmail || '-'}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
-                            <div className="truncate" title={log.description}>
-                              {log.description}
-                            </div>
-                            {log.errorMessage && (
-                              <div className="text-xs text-red-600 mt-1 truncate" title={log.errorMessage}>
-                                Error: {log.errorMessage}
-                              </div>
-                            )}
-                            {log.details && Object.keys(log.details).length > 0 && (
-                              <details className="mt-2">
-                                <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800">
-                                  View Details
-                                </summary>
-                                <pre className="mt-2 p-2 bg-gray-50 rounded text-xs overflow-auto max-h-40">
-                                  {JSON.stringify(log.details, null, 2)}
-                                </pre>
-                              </details>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {log.duration ? `${log.duration}ms` : '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              log.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
-                              {log.success ? 'Success' : 'Failed'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    Page {auditLogPage + 1} of {Math.ceil(auditLogTotal / auditLogLimit)}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setAuditLogPage(Math.max(0, auditLogPage - 1))}
-                      disabled={auditLogPage === 0}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setAuditLogPage(auditLogPage + 1)}
-                      disabled={(auditLogPage + 1) * auditLogLimit >= auditLogTotal}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Legend */}
-            <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-900 mb-3">Audit Log Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
-                <div>
-                  <h4 className="font-semibold mb-2">Log Levels:</h4>
-                  <ul className="space-y-1">
-                    <li><span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-2">success</span> - Operation completed successfully</li>
-                    <li><span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 mr-2">error</span> - Operation failed</li>
-                    <li><span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mr-2">warning</span> - Operation completed with warnings</li>
-                    <li><span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2">info</span> - Informational message</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">Action Types:</h4>
-                  <ul className="space-y-1">
-                    <li><strong>user.*</strong> - User account operations</li>
-                    <li><strong>employee.*</strong> - Employee management operations</li>
-                    <li><strong>api.*</strong> - API calls (inbound/outbound)</li>
-                    <li><strong>config.*</strong> - Configuration changes</li>
-                    <li><strong>system.*</strong> - System-level operations</li>
-                  </ul>
-                </div>
-              </div>
-              <p className="text-sm text-blue-800 mt-4">
-                The system retains up to 10,000 most recent log entries. Older entries are automatically purged.
-              </p>
-            </div>
           </div>
         )}
 

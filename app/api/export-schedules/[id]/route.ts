@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storage } from '@/lib/storage';
+import { serverStorage } from '@/lib/serverStorage';
 import { calculateNextScheduledTime } from '@/lib/utils';
-import { registerSchedule, unregisterSchedule } from '@/lib/scheduler';
 import { logConfigChange } from '@/lib/serverAuditLog';
 import { authenticateApiRequest } from '@/lib/apiAuth';
 
@@ -22,7 +21,7 @@ export async function GET(
       );
     }
 
-    const schedule = storage.getExportSchedule(params.id);
+    const schedule = await serverStorage.getExportSchedule(params.id);
 
     if (!schedule) {
       return NextResponse.json(
@@ -61,7 +60,7 @@ export async function PUT(
     const body = await request.json();
 
     // Check if schedule exists
-    const existingSchedule = storage.getExportSchedule(params.id);
+    const existingSchedule = await serverStorage.getExportSchedule(params.id);
     if (!existingSchedule) {
       return NextResponse.json(
         { success: false, error: 'Schedule not found' },
@@ -88,21 +87,13 @@ export async function PUT(
       updates.nextScheduled = calculateNextScheduledTime(tempSchedule);
     }
 
-    const updatedSchedule = storage.updateExportSchedule(params.id, updates);
+    const updatedSchedule = await serverStorage.updateExportSchedule(params.id, updates);
 
     if (!updatedSchedule) {
       return NextResponse.json(
         { success: false, error: 'Failed to update schedule' },
         { status: 500 }
       );
-    }
-
-    // Update scheduler registration
-    if (body.enabled !== undefined || body.frequency || body.scheduledTime) {
-      unregisterSchedule(params.id);
-      if (updatedSchedule.enabled) {
-        registerSchedule(updatedSchedule);
-      }
     }
 
     // Log the schedule update
@@ -152,8 +143,8 @@ export async function DELETE(
       );
     }
 
-    const schedule = storage.getExportSchedule(params.id);
-    const success = storage.deleteExportSchedule(params.id);
+    const schedule = await serverStorage.getExportSchedule(params.id);
+    const success = await serverStorage.deleteExportSchedule(params.id);
 
     if (!success) {
       return NextResponse.json(
@@ -161,9 +152,6 @@ export async function DELETE(
         { status: 404 }
       );
     }
-
-    // Unregister from scheduler
-    unregisterSchedule(params.id);
 
     // Log the schedule deletion
     await logConfigChange(

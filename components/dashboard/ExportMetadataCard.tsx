@@ -4,7 +4,6 @@ import { ExportMetadata } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { Download, Calendar, FileText } from 'lucide-react';
-import Link from 'next/link';
 
 interface ExportMetadataCardProps {
   metadata: ExportMetadata;
@@ -83,15 +82,6 @@ export function ExportMetadataCard({ metadata }: ExportMetadataCardProps) {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-4 pt-4 border-t border-gray-100">
-        <Link
-          href="/employees"
-          className="text-sm text-primary hover:text-primary-dark font-medium"
-        >
-          Manage Schedules →
-        </Link>
       </div>
     </div>
   );

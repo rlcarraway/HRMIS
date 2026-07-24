@@ -59,7 +59,12 @@ export function ExportSchedulerModal({
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Load initial schedule if editing
+  // Re-initialize every time the modal opens, whether editing an existing
+  // schedule or creating a new one — otherwise fields from a previous
+  // open (edited or just typed into) linger since the component stays mounted.
   useEffect(() => {
+    if (!isOpen) return;
+
     if (initialSchedule) {
       setName(initialSchedule.name);
       setFrequency(initialSchedule.frequency);
@@ -73,16 +78,41 @@ export function ExportSchedulerModal({
       setWebhookUrl(initialSchedule.webhookUrl || '');
       setFilters(initialSchedule.filters);
 
-      // Load OAuth config if present
       if (initialSchedule.webhookOAuth) {
         setShowOAuth(true);
         setOauthClientId(initialSchedule.webhookOAuth.clientId);
         setOauthClientSecret(initialSchedule.webhookOAuth.clientSecret);
         setOauthTokenUrl(initialSchedule.webhookOAuth.tokenUrl);
         setOauthScope(initialSchedule.webhookOAuth.scope || '');
+      } else {
+        setShowOAuth(false);
+        setOauthClientId('');
+        setOauthClientSecret('');
+        setOauthTokenUrl('');
+        setOauthScope('');
       }
+    } else {
+      setName('');
+      setFrequency('daily');
+      setScheduledTime('09:00');
+      setScheduledDate('');
+      setDayOfWeek(1);
+      setDayOfMonth(1);
+      setIntervalValue(1);
+      setEnabled(true);
+      setExportType('full');
+      setWebhookUrl('');
+      setFilters(currentFilters);
+      setShowOAuth(false);
+      setOauthClientId('');
+      setOauthClientSecret('');
+      setOauthTokenUrl('');
+      setOauthScope('');
     }
-  }, [initialSchedule]);
+
+    setError('');
+    setShowFilters(false);
+  }, [isOpen, initialSchedule, currentFilters]);
 
   const handleSubmit = async (scheduleNow = false) => {
     setError('');

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, Settings, Building2, LogOut, LogIn } from 'lucide-react';
+import { Home, Users, Settings, Building2, LogOut, LogIn, ScrollText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLogo } from '@/hooks/useLogo';
 import { useSession, signIn, signOut } from 'next-auth/react';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 const navItems = [
   { href: '/', label: 'Dashboard', icon: Home, requiresAuth: false },
   { href: '/employees', label: 'Manage Employees', icon: Users, requiresAuth: true },
+  { href: '/audit-log', label: 'Audit Log', icon: ScrollText, requiresAuth: true, adminOnly: true },
   { href: '/settings', label: 'Settings', icon: Settings, requiresAuth: true, adminOnly: true },
 ];
 

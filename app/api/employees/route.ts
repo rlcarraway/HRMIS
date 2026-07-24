@@ -129,8 +129,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate required fields
-    const requiredFields = ['type', 'firstName', 'lastName', 'email', 'department', 'title', 'manager', 'status', 'startDate'];
+    // Validate required fields (only type and email are required core attributes)
+    const requiredFields = ['type', 'email'];
     for (const field of requiredFields) {
       if (!body[field]) {
         return NextResponse.json(
@@ -161,14 +161,14 @@ export async function POST(request: NextRequest) {
     const newEmployee: Employee = {
       id: generateId(),
       type: body.type,
-      firstName: body.firstName,
-      lastName: body.lastName,
+      firstName: body.firstName || '',
+      lastName: body.lastName || '',
       email: body.email,
-      department: body.department,
-      title: body.title,
-      manager: body.manager,
-      status: body.status,
-      startDate: body.startDate,
+      department: body.department || '',
+      title: body.title || '',
+      manager: body.manager || '',
+      status: body.status || 'active',
+      startDate: body.startDate || '',
       endDate: body.endDate,
       customAttributes: body.customAttributes || {},
       createdAt: now,

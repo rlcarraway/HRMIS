@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storage } from '@/lib/storage';
+import { serverStorage } from '@/lib/serverStorage';
 
 // GET /api/export-metadata - Get export metadata
 export async function GET() {
   try {
-    const metadata = storage.getExportMetadata();
+    const metadata = await serverStorage.getExportMetadata();
     return NextResponse.json({
       success: true,
       data: metadata,
@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const metadata = storage.getExportMetadata();
+    const metadata = await serverStorage.getExportMetadata();
 
     // Handle incremental updates
     const updates: any = {};
@@ -48,7 +48,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const updatedMetadata = storage.updateExportMetadata(updates);
+    const updatedMetadata = await serverStorage.updateExportMetadata(updates);
 
     return NextResponse.json({
       success: true,

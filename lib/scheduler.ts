@@ -1,12 +1,9 @@
-import cron, { ScheduledTask } from 'node-cron';
-import { storage } from './storage';
+import { serverStorage } from './serverStorage';
 import { exportToCSV } from './export';
 import { ExportSchedule, Employee, OAuthConfig } from './types';
-import { calculateNextScheduledTime, generateId } from './utils';
+import { calculateNextScheduledTime, generateId, isScheduleDue } from './utils';
 import fs from 'fs';
 import path from 'path';
-
-const activeJobs = new Map<string, ScheduledTask>();
 
 // OAuth token cache to avoid requesting tokens too frequently
 interface TokenCacheEntry {
@@ -15,70 +12,29 @@ interface TokenCacheEntry {
 }
 const tokenCache = new Map<string, TokenCacheEntry>();
 
-export function registerSchedule(schedule: ExportSchedule) {
-  // Remove existing job if any
-  unregisterSchedule(schedule.id);
+// Check all enabled schedules and run whichever are due. Stateless by design —
+// safe to call from a local setInterval poller (see lib/server-init.ts) or from
+// a Vercel Cron Job hitting /api/cron/execute-due-schedules, since neither
+// environment can rely on an in-process timer surviving between invocations.
+export async function checkAndRunDueSchedules(): Promise<{
+  checked: number;
+  executed: number;
+  results: Array<{ id: string; name: string; success: boolean; error?: string }>;
+}> {
+  const schedules = await serverStorage.getExportSchedules();
+  const due = schedules.filter(isScheduleDue);
 
-  if (!schedule.enabled) {
-    return;
+  const results: Array<{ id: string; name: string; success: boolean; error?: string }> = [];
+  for (const schedule of due) {
+    const result = await executeScheduledExport(schedule.id);
+    results.push({ id: schedule.id, name: schedule.name, success: result.success, error: result.error });
   }
 
-  // Convert to cron expression
-  const cronExpression = scheduleToCron(schedule);
-
-  // Create job
-  const job = cron.schedule(cronExpression, async () => {
-    await executeScheduledExport(schedule.id);
-  });
-
-  activeJobs.set(schedule.id, job);
-  console.log(`Registered schedule: ${schedule.name} (${cronExpression})`);
-}
-
-export function unregisterSchedule(scheduleId: string) {
-  const job = activeJobs.get(scheduleId);
-  if (job) {
-    job.stop();
-    activeJobs.delete(scheduleId);
-    console.log(`Unregistered schedule: ${scheduleId}`);
-  }
-}
-
-function scheduleToCron(schedule: ExportSchedule): string {
-  switch (schedule.frequency) {
-    case 'minutes':
-      // Run every N minutes
-      return `*/${schedule.intervalValue} * * * *`;
-
-    case 'hourly':
-      // Run every N hours at minute 0
-      return `0 */${schedule.intervalValue} * * *`;
-
-    case 'daily': {
-      const [hours, minutes] = schedule.scheduledTime!.split(':');
-      return `${minutes} ${hours} * * *`;
-    }
-
-    case 'weekly': {
-      const [hours, minutes] = schedule.scheduledTime!.split(':');
-      return `${minutes} ${hours} * * ${schedule.dayOfWeek}`;
-    }
-
-    case 'monthly': {
-      const [hours, minutes] = schedule.scheduledTime!.split(':');
-      return `${minutes} ${hours} ${schedule.dayOfMonth} * *`;
-    }
-
-    case 'once': {
-      // For once, use date-based check
-      const [hours, minutes] = schedule.scheduledTime!.split(':');
-      return `${minutes} ${hours} * * *`; // Check daily, validate date in handler
-    }
-  }
+  return { checked: schedules.length, executed: due.length, results };
 }
 
 export async function executeScheduledExport(scheduleId: string): Promise<{ success: boolean; filename?: string; count?: number; error?: string }> {
-  const schedule = storage.getExportSchedule(scheduleId);
+  const schedule = await serverStorage.getExportSchedule(scheduleId);
   if (!schedule || !schedule.enabled) {
     return { success: false, error: 'Schedule not found or disabled' };
   }
@@ -91,8 +47,7 @@ export async function executeScheduledExport(scheduleId: string): Promise<{ succ
     }
 
     // Disable after execution
-    storage.updateExportSchedule(scheduleId, { enabled: false });
-    unregisterSchedule(scheduleId);
+    await serverStorage.updateExportSchedule(scheduleId, { enabled: false });
   }
 
   const executedAt = new Date().toISOString();
@@ -101,7 +56,7 @@ export async function executeScheduledExport(scheduleId: string): Promise<{ succ
 
   try {
     // Get employees with filters
-    let employees = storage.getEmployees();
+    let employees = await serverStorage.getEmployees();
 
     // Apply filters
     if (schedule.filters) {
@@ -135,8 +90,8 @@ export async function executeScheduledExport(scheduleId: string): Promise<{ succ
     }
 
     // Update metadata
-    const metadata = storage.getExportMetadata();
-    storage.updateExportMetadata({
+    const metadata = await serverStorage.getExportMetadata();
+    await serverStorage.updateExportMetadata({
       lastExportTimestamp: executedAt,
       lastExportCount: employees.length,
       lastExportType: 'scheduled',
@@ -146,7 +101,7 @@ export async function executeScheduledExport(scheduleId: string): Promise<{ succ
 
     // Update schedule with exported record IDs (for delta tracking)
     const exportedIds = employees.map(emp => emp.id);
-    storage.updateExportSchedule(scheduleId, {
+    await serverStorage.updateExportSchedule(scheduleId, {
       lastExecuted: executedAt,
       lastExportedRecordIds: exportedIds,
       nextScheduled: calculateNextScheduledTime(schedule),
@@ -172,7 +127,7 @@ export async function executeScheduledExport(scheduleId: string): Promise<{ succ
     }
 
     // Log execution
-    storage.addExportLog({
+    await serverStorage.addExportLog({
       id: generateId(),
       scheduleId,
       executedAt,
@@ -194,7 +149,7 @@ export async function executeScheduledExport(scheduleId: string): Promise<{ succ
     console.error('Export failed:', error);
 
     // Log failure
-    storage.addExportLog({
+    await serverStorage.addExportLog({
       id: generateId(),
       scheduleId,
       executedAt,
@@ -369,16 +324,5 @@ function applyFilters(employees: Employee[], filters: ExportSchedule['filters'])
     }
 
     return true;
-  });
-}
-
-// Initialize all schedules on server start
-export function initializeScheduler() {
-  const schedules = storage.getExportSchedules();
-  console.log(`Initializing scheduler with ${schedules.length} schedules`);
-  schedules.forEach(schedule => {
-    if (schedule.enabled) {
-      registerSchedule(schedule);
-    }
   });
 }

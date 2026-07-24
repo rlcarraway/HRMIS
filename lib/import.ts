@@ -187,6 +187,15 @@ export function validateAndMapRow(
     }
   });
 
+  // Non-required core fields default to a safe value instead of failing validation
+  employeeData.firstName = employeeData.firstName || '';
+  employeeData.lastName = employeeData.lastName || '';
+  employeeData.department = employeeData.department || '';
+  employeeData.title = employeeData.title || '';
+  employeeData.manager = employeeData.manager || '';
+  employeeData.status = employeeData.status || 'active';
+  employeeData.startDate = employeeData.startDate || '';
+
   // Validate using Zod schema (for standard fields)
   try {
     const validationData = {
@@ -255,8 +264,8 @@ export function importEmployeesFromCSV(
     return { successful, errors };
   }
 
-  // Validate required headers
-  const requiredHeaders = ['Type', 'First Name', 'Last Name', 'Email', 'Department', 'Title', 'Manager', 'Status', 'Start Date'];
+  // Validate required headers (only Type and Email are required core attributes)
+  const requiredHeaders = ['Type', 'Email'];
   const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
   if (missingHeaders.length > 0) {
     errors.push({

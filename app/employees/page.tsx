@@ -17,7 +17,7 @@ import { ExportSchedulerModal } from '@/components/employees/ExportSchedulerModa
 import { ExportSchedulesList } from '@/components/employees/ExportSchedulesList';
 import { formatDate } from '@/lib/utils';
 import { downloadCSV } from '@/lib/export';
-import { Plus, Download, Upload, Eye, Edit, Trash2, ChevronDown, Columns, FlaskConical } from 'lucide-react';
+import { Plus, Download, Upload, Eye, Edit, Trash2, Columns, FlaskConical, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { ColumnCustomizer } from '@/components/employees/ColumnCustomizer';
 import { canManageEmployees } from '@/lib/authTypes';
@@ -78,7 +78,6 @@ function EmployeesContent() {
     }
   }, [searchParams]);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
   const [showSchedulerModal, setShowSchedulerModal] = useState(false);
   const [showSchedulesListModal, setShowSchedulesListModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ExportSchedule | undefined>(undefined);
@@ -141,8 +140,6 @@ function EmployeesContent() {
     } catch (error) {
       console.error('Failed to update export metadata:', error);
     }
-
-    setShowExportMenu(false);
   };
 
   const handleImport = async (employees: Array<Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>>) => {
@@ -295,6 +292,12 @@ function EmployeesContent() {
 
   const handleEditSchedule = (schedule: ExportSchedule) => {
     setEditingSchedule(schedule);
+    setShowSchedulesListModal(false);
+    setShowSchedulerModal(true);
+  };
+
+  const handleCreateSchedule = () => {
+    setEditingSchedule(undefined);
     setShowSchedulesListModal(false);
     setShowSchedulerModal(true);
   };
@@ -498,47 +501,19 @@ function EmployeesContent() {
                 Import CSV
               </Button>
 
-              {/* Export dropdown menu */}
-              <div className="relative">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowExportMenu(!showExportMenu)}
-                  disabled={filteredEmployees.length === 0}
-                >
-                  <Download size={18} className="mr-2" />
-                  Export CSV
-                  <ChevronDown size={16} className="ml-1" />
-                </Button>
+              <Button
+                variant="secondary"
+                onClick={handleExport}
+                disabled={filteredEmployees.length === 0}
+              >
+                <Download size={18} className="mr-2" />
+                Export CSV
+              </Button>
 
-                {showExportMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                    <button
-                      onClick={handleExport}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Export Now
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        setShowSchedulerModal(true);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Schedule Export
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        setShowSchedulesListModal(true);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      View Schedules ({schedules.length})
-                    </button>
-                  </div>
-                )}
-              </div>
+              <Button variant="secondary" onClick={() => setShowSchedulesListModal(true)}>
+                <Calendar size={18} className="mr-2" />
+                Schedule Export
+              </Button>
 
               <Button variant="secondary" onClick={() => setShowTestDataModal(true)}>
                 <FlaskConical size={18} className="mr-2" />
@@ -622,6 +597,7 @@ function EmployeesContent() {
         isOpen={showSchedulesListModal}
         onClose={() => setShowSchedulesListModal(false)}
         schedules={schedules}
+        onCreateNew={handleCreateSchedule}
         onEdit={handleEditSchedule}
         onDelete={deleteSchedule}
         onExecute={executeSchedule}

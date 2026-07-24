@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storage } from '@/lib/storage';
+import { serverStorage } from '@/lib/serverStorage';
 import { exportScheduleSchema } from '@/lib/validation';
 import { generateId, calculateNextScheduledTime } from '@/lib/utils';
 import { ExportSchedule } from '@/lib/types';
-import { registerSchedule } from '@/lib/scheduler';
 import { logConfigChange } from '@/lib/serverAuditLog';
 import { authenticateApiRequest } from '@/lib/apiAuth';
 import '@/lib/server-init'; // Initialize server on first import
@@ -22,7 +21,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const schedules = storage.getExportSchedules();
+    const schedules = await serverStorage.getExportSchedules();
     return NextResponse.json({
       success: true,
       data: schedules,
@@ -84,10 +83,7 @@ export async function POST(request: NextRequest) {
     scheduleData.nextScheduled = calculateNextScheduledTime(scheduleData);
 
     // Save to storage
-    storage.addExportSchedule(scheduleData);
-
-    // Register with scheduler
-    registerSchedule(scheduleData);
+    await serverStorage.addExportSchedule(scheduleData);
 
     // Log the schedule creation
     await logConfigChange(

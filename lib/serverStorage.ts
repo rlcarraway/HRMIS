@@ -4,14 +4,14 @@ import { Employee, CustomAttribute, ChangeHistory, ExportSchedule, ExportMetadat
 // Default core attributes configuration
 const DEFAULT_CORE_ATTRIBUTES: CoreAttributeConfig[] = [
   { id: '1', fieldName: 'type', displayName: 'Type', dataType: 'select', required: true, options: ['employee', 'contractor'], locked: true },
-  { id: '2', fieldName: 'firstName', displayName: 'First Name', dataType: 'string', required: true, locked: true },
-  { id: '3', fieldName: 'lastName', displayName: 'Last Name', dataType: 'string', required: true, locked: true },
+  { id: '2', fieldName: 'firstName', displayName: 'First Name', dataType: 'string', required: false, locked: false },
+  { id: '3', fieldName: 'lastName', displayName: 'Last Name', dataType: 'string', required: false, locked: false },
   { id: '4', fieldName: 'email', displayName: 'Email', dataType: 'string', required: true, locked: true },
-  { id: '5', fieldName: 'department', displayName: 'Department', dataType: 'string', required: true },
-  { id: '6', fieldName: 'title', displayName: 'Title', dataType: 'string', required: true },
-  { id: '7', fieldName: 'manager', displayName: 'Manager', dataType: 'string', required: true },
-  { id: '8', fieldName: 'status', displayName: 'Status', dataType: 'select', required: true, options: ['active', 'inactive', 'terminated'], locked: true },
-  { id: '9', fieldName: 'startDate', displayName: 'Start Date', dataType: 'date', required: true },
+  { id: '5', fieldName: 'department', displayName: 'Department', dataType: 'string', required: false },
+  { id: '6', fieldName: 'title', displayName: 'Title', dataType: 'string', required: false },
+  { id: '7', fieldName: 'manager', displayName: 'Manager', dataType: 'string', required: false },
+  { id: '8', fieldName: 'status', displayName: 'Status', dataType: 'select', required: false, options: ['active', 'inactive', 'terminated'], locked: false },
+  { id: '9', fieldName: 'startDate', displayName: 'Start Date', dataType: 'date', required: false },
   { id: '10', fieldName: 'endDate', displayName: 'End Date', dataType: 'date', required: false },
 ];
 

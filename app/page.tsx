@@ -1,19 +1,15 @@
 'use client';
 
 import { useEmployees } from '@/hooks/useEmployees';
-import { useHistory } from '@/hooks/useHistory';
 import { useExportSchedules } from '@/hooks/useExportSchedules';
 import { calculateStats } from '@/lib/utils';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { RecentChanges } from '@/components/dashboard/RecentChanges';
 import { ExportMetadataCard } from '@/components/dashboard/ExportMetadataCard';
 import { Users, UserCheck, UserX, AlertCircle, Briefcase, UserCog } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
 
 export default function DashboardPage() {
   const { employees, loading } = useEmployees();
-  const { history } = useHistory();
   const { metadata } = useExportSchedules();
 
   if (loading) {
@@ -29,19 +25,6 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/employees/new">
-            <Button variant="primary">Add New Employee</Button>
-          </Link>
-          <Link href="/employees">
-            <Button variant="secondary">View All Employees</Button>
-          </Link>
-        </div>
-      </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -108,19 +91,6 @@ export default function DashboardPage() {
 
       {/* Export Metadata */}
       <ExportMetadataCard metadata={metadata} />
-
-      {/* Recent Changes */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Recent Changes</h2>
-          {history.length > 0 && (
-            <Link href="/employees" className="text-sm text-primary hover:underline">
-              View All
-            </Link>
-          )}
-        </div>
-        <RecentChanges history={history} limit={5} />
-      </div>
     </div>
   );
 }

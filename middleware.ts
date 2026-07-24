@@ -28,6 +28,7 @@ export default withAuth(
     // Check admin-only routes
     const isAdminRoute =
       req.nextUrl.pathname.startsWith('/settings') ||
+      req.nextUrl.pathname.startsWith('/audit-log') ||
       req.nextUrl.pathname.startsWith('/employees/new') ||
       req.nextUrl.pathname.includes('/edit');
 

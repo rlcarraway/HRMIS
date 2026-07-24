@@ -3,14 +3,14 @@ import { z } from 'zod';
 // Employee form validation schema
 export const employeeSchema = z.object({
   type: z.enum(['employee', 'contractor']),
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
+  firstName: z.string(),
+  lastName: z.string(),
   email: z.string().email('Invalid email address'),
-  department: z.string().min(1, 'Department is required'),
-  title: z.string().min(1, 'Title is required'),
-  manager: z.string().min(1, 'Manager is required'),
+  department: z.string(),
+  title: z.string(),
+  manager: z.string(),
   status: z.enum(['active', 'inactive', 'terminated']),
-  startDate: z.string().min(1, 'Start date is required'),
+  startDate: z.string(),
   endDate: z.string().optional(),
 }).refine(
   (data) => {

@@ -46,19 +46,26 @@ export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const isCoreRequired = (fieldName: string) => {
+    return !!coreAttributesConfig.find(config => config.fieldName === fieldName)?.required;
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email address';
+    if (isCoreRequired('firstName') && !formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (isCoreRequired('lastName') && !formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (formData.email.trim()) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        newErrors.email = 'Invalid email address';
+      }
+    } else if (isCoreRequired('email')) {
+      newErrors.email = 'Email is required';
     }
-    if (!formData.department.trim()) newErrors.department = 'Department is required';
-    if (!formData.title.trim()) newErrors.title = 'Title is required';
-    if (!formData.manager.trim()) newErrors.manager = 'Manager is required';
-    if (!formData.startDate) newErrors.startDate = 'Start date is required';
+    if (isCoreRequired('department') && !formData.department.trim()) newErrors.department = 'Department is required';
+    if (isCoreRequired('title') && !formData.title.trim()) newErrors.title = 'Title is required';
+    if (isCoreRequired('manager') && !formData.manager.trim()) newErrors.manager = 'Manager is required';
+    if (isCoreRequired('startDate') && !formData.startDate) newErrors.startDate = 'Start date is required';
 
     if (formData.type === 'contractor' && !formData.endDate) {
       newErrors.endDate = 'End date is required for contractors';
