@@ -238,15 +238,18 @@ function SettingsContent() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return;
 
-    if (editingAttribute) {
-      updateAttribute(editingAttribute.id, formData);
+    const result = editingAttribute
+      ? await updateAttribute(editingAttribute.id, formData)
+      : await createAttribute(formData);
+
+    if (result) {
+      closeModal();
     } else {
-      createAttribute(formData);
+      setErrors({ name: 'Failed to save attribute. Please try again.' });
     }
-    closeModal();
   };
 
   const handleDelete = (id: string) => {

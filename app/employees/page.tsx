@@ -88,6 +88,7 @@ function EmployeesContent() {
   const [showTestDataModal, setShowTestDataModal] = useState(false);
   const [testDataTab, setTestDataTab] = useState<'generate' | 'delete'>('generate');
   const [testDataCount, setTestDataCount] = useState<string>('10');
+  const [testDataDomain, setTestDataDomain] = useState<string>('example.com');
   const [generatingTestData, setGeneratingTestData] = useState(false);
   const [bulkDeleteFilters, setBulkDeleteFilters] = useState<EmployeeFilters>({});
   const [bulkDeletePreview, setBulkDeletePreview] = useState<Employee[]>([]);
@@ -172,6 +173,12 @@ function EmployeesContent() {
       return;
     }
 
+    const domain = testDataDomain.trim().toLowerCase();
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(domain)) {
+      alert('Please enter a valid domain (e.g., example.com)');
+      return;
+    }
+
     setGeneratingTestData(true);
 
     try {
@@ -180,7 +187,7 @@ function EmployeesContent() {
       for (let i = 0; i < count; i++) {
         const firstName = getRandomItem(FIRST_NAMES);
         const lastName = getRandomItem(LAST_NAMES);
-        const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`;
+        const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
         const department = getRandomItem(DEPARTMENTS);
         const titles = TITLES_BY_DEPARTMENT[department] || ['Employee'];
         const title = getRandomItem(titles);
@@ -263,6 +270,7 @@ function EmployeesContent() {
     setBulkDeleteFilters({});
     setBulkDeletePreview([]);
     setTestDataCount('10');
+    setTestDataDomain('example.com');
   };
 
   // Update bulk delete preview when filters change
@@ -692,7 +700,7 @@ function EmployeesContent() {
               </p>
               <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 ml-4">
                 <li>Random first and last name from a pool of 300+ names</li>
-                <li>Email address formatted as firstname.lastname@example.com</li>
+                <li>Email address formatted as firstname.lastname@{testDataDomain || 'example.com'}</li>
                 <li>Random department and appropriate job title</li>
                 <li>Random status (mostly active)</li>
                 <li>Random start date (2020-2024)</li>
@@ -705,6 +713,13 @@ function EmployeesContent() {
                 onChange={(e) => setTestDataCount(e.target.value)}
                 min="1"
                 max="1000"
+              />
+              <Input
+                label="Email Domain"
+                type="text"
+                value={testDataDomain}
+                onChange={(e) => setTestDataDomain(e.target.value)}
+                placeholder="example.com"
               />
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                 <p className="text-sm text-amber-800">

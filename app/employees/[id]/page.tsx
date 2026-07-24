@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useEmployees } from '@/hooks/useEmployees';
+import { useCoreAttributes } from '@/hooks/useCoreAttributes';
+import { useCustomAttributes } from '@/hooks/useCustomAttributes';
 import { Employee } from '@/lib/types';
 import { EmployeeForm } from '@/components/employees/EmployeeForm';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +15,8 @@ import { canManageEmployees } from '@/lib/authTypes';
 export default function EmployeeDetailPage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
   const { getEmployee, updateEmployee } = useEmployees();
+  const { attributes: coreAttributesConfig } = useCoreAttributes();
+  const { attributes: customAttributeDefs } = useCustomAttributes();
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -23,11 +27,12 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
     setEmployee(emp);
   }, [params.id, getEmployee]);
 
-  const handleSubmit = (data: any) => {
-    updateEmployee(params.id, data);
+  const handleSubmit = async (data: any) => {
+    const updated = await updateEmployee(params.id, data);
+    if (updated) {
+      setEmployee(updated);
+    }
     setIsEditing(false);
-    const updatedEmp = getEmployee(params.id);
-    setEmployee(updatedEmp);
   };
 
   if (!employee) {
@@ -74,53 +79,50 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         ) : (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Type</label>
-                <p className="text-base text-gray-900 capitalize">{employee.type}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-                <p className="text-base text-gray-900 capitalize">{employee.status}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Email</label>
-                <p className="text-base text-gray-900">{employee.email}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Department</label>
-                <p className="text-base text-gray-900">{employee.department}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Title</label>
-                <p className="text-base text-gray-900">{employee.title}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Manager</label>
-                <p className="text-base text-gray-900">{employee.manager}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Start Date</label>
-                <p className="text-base text-gray-900">{employee.startDate}</p>
-              </div>
-              {employee.endDate && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">End Date</label>
-                  <p className="text-base text-gray-900">{employee.endDate}</p>
-                </div>
-              )}
+              {coreAttributesConfig.map(config => {
+                const fieldName = config.fieldName;
+                if (fieldName === 'endDate' && employee.type !== 'contractor') return null;
+
+                const rawValue = employee[fieldName as keyof Employee];
+                if (rawValue === undefined || rawValue === null || rawValue === '') return null;
+
+                const displayValue =
+                  config.dataType === 'boolean' ? (rawValue ? 'Yes' : 'No') : String(rawValue);
+
+                return (
+                  <div key={fieldName}>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      {config.displayName}
+                    </label>
+                    <p className={`text-base text-gray-900 ${config.dataType === 'select' ? 'capitalize' : ''}`}>
+                      {displayValue}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Custom Attributes */}
-            {Object.keys(employee.customAttributes || {}).length > 0 && (
+            {customAttributeDefs.length > 0 && (
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold mb-4">Custom Attributes</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {Object.entries(employee.customAttributes).map(([key, value]) => (
-                    <div key={key}>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">{key}</label>
-                      <p className="text-base text-gray-900">{String(value)}</p>
-                    </div>
-                  ))}
+                  {customAttributeDefs.map(attr => {
+                    const value = employee.customAttributes?.[attr.name];
+                    const displayValue =
+                      value === undefined || value === null || value === ''
+                        ? '—'
+                        : attr.dataType === 'boolean'
+                          ? (value ? 'Yes' : 'No')
+                          : String(value);
+
+                    return (
+                      <div key={attr.id}>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">{attr.name}</label>
+                        <p className="text-base text-gray-900">{displayValue}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

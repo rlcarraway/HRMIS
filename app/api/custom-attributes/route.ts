@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, dataType, required } = body;
+    const { name, dataType, required, options } = body;
 
     // Validation
     if (!name || !dataType) {
@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       name,
       dataType,
       required: !!required,
+      ...(options !== undefined ? { options } : {}),
     };
 
     await serverStorage.addCustomAttribute(newAttribute);

@@ -79,7 +79,9 @@ export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps
 
     // Validate custom attributes
     attributes.forEach(attr => {
-      if (attr.required && !formData.customAttributes[attr.name]) {
+      const value = formData.customAttributes[attr.name];
+      const isEmpty = value === undefined || value === null || value === '';
+      if (attr.required && isEmpty) {
         newErrors[`custom_${attr.id}`] = `${attr.name} is required`;
       }
     });

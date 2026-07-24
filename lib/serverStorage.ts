@@ -581,8 +581,8 @@ class ServerStorage {
     if (employee.title !== undefined) mapped.title = employee.title;
     if (employee.manager !== undefined) mapped.manager = employee.manager;
     if (employee.status !== undefined) mapped.status = employee.status;
-    if (employee.startDate !== undefined) mapped.start_date = employee.startDate;
-    if (employee.endDate !== undefined) mapped.end_date = employee.endDate;
+    if (employee.startDate !== undefined) mapped.start_date = employee.startDate || null;
+    if (employee.endDate !== undefined) mapped.end_date = employee.endDate || null;
     if (employee.customAttributes !== undefined) mapped.custom_attributes = employee.customAttributes;
     if (employee.createdAt !== undefined) mapped.created_at = employee.createdAt;
     if (employee.updatedAt !== undefined) mapped.updated_at = employee.updatedAt;
@@ -595,6 +595,7 @@ class ServerStorage {
       name: data.name,
       dataType: data.data_type,
       required: data.required,
+      options: data.options || undefined,
     };
   }
 
@@ -604,6 +605,7 @@ class ServerStorage {
     if (attr.name !== undefined) mapped.name = attr.name;
     if (attr.dataType !== undefined) mapped.data_type = attr.dataType;
     if (attr.required !== undefined) mapped.required = attr.required;
+    if (attr.options !== undefined) mapped.options = attr.options;
     return mapped;
   }
 
